@@ -93,6 +93,18 @@ export async function initDb(dbPath: string): Promise<void> {
     created_at INTEGER NOT NULL
   );`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS design_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    brand_name TEXT NOT NULL,
+    industry TEXT DEFAULT '',
+    color_mode TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    resolved_at INTEGER,
+    created_at INTEGER NOT NULL
+  );`);
+
   // Seed admin account
   seedAdmin();
   // Seed default showcase cases if empty
