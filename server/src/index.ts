@@ -476,6 +476,54 @@ app.delete('/api/admin/orders/:id/images/:imageId', requireAdmin, async (req: an
   res.json({ ok: true });
 });
 
+/* ===================== Design Requests (customer-submitted logo needs) ===================== */
+app.post('/api/designs', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const brandName = String(req.body.brandName || req.body.brand_name || '').trim();
+  if (!brandName) return res.status(400).json({ error: 'Brand name required' });
+  const createdAt = parseInt(req.body.createdAt || req.body.created_at || '0', 10) || Date.now();
+  // Dedupe by email + brand + created_at so retries / localStorage sync don't duplicate
+  const existing = get(
+    'SELECT id FROM design_requests WHERE email = ? AND brand_name = ? AND created_at = ?',
+    [email, brandName, createdAt]
+  );
+  if (existing) {
+    return res.json({ ok: true, id: existing.id, duplicated: true });
+  }
+  exec(
+    'INSERT INTO design_requests (email, brand_name, industry, color_mode, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [
+      email,
+      brandName,
+      String(req.body.industry || '').trim(),
+      String(req.body.colorMode || req.body.color_mode || '').trim(),
+      String(req.body.description || '').trim(),
+      'pending',
+      createdAt,
+    ]
+  );
+  await saveDb(config.dbPath);
+  const id = get('SELECT last_insert_rowid() AS id');
+  res.json({ ok: true, id: id ? id.id : null });
+});
+
+app.get('/api/admin/designs', requireAdmin, (req: any, res) => {
+  const limit = parseInt(req.query.limit || '200', 10);
+  const rows = all(
+    'SELECT id, email, brand_name, industry, color_mode, description, status, resolved_at, created_at FROM design_requests ORDER BY created_at DESC LIMIT ?',
+    [limit]
+  );
+  res.json({ requests: rows });
+});
+
+app.post('/api/admin/designs/:id/resolve', requireAdmin, async (req: any, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+  exec('UPDATE design_requests SET status = \'resolved\', resolved_at = ? WHERE id = ?', [Date.now(), id]);
+  await saveDb(config.dbPath);
+  res.json({ ok: true });
+});
+
 /* ===================== Admin: Payments / Revenue ===================== */
 app.get('/api/admin/payments', requireAdmin, (req: any, res) => {
   const orders = all('SELECT * FROM orders WHERE status = \'completed\'');
