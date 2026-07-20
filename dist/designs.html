@@ -256,6 +256,27 @@
     try { return JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]'); } catch { return []; }
   }
 
+  // Sync locally-stored design requests to the backend so they show up in admin.
+  // Backend deduplicates by email + brand + createdAt, so repeated calls are safe.
+  function syncDesignRequests(orders) {
+    try {
+      const email = (getSession() || {}).email || '';
+      orders.forEach(function(o) {
+        fetch(API_BASE + '/api/designs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('pencilbear_token') || '') },
+          body: JSON.stringify({
+            email: email || o.email || o.userEmail || '',
+            brandName: getBrandName(o),
+            industry: o.industry || 'unspecified',
+            colorMode: o.colorMode || 'unspecified',
+            createdAt: o.createdAt || o.created_at || o.date || Date.now()
+          })
+        }).catch(function(){});
+      });
+    } catch (e) {}
+  }
+
   // Extract brand name from order — supports both localStorage and server formats
   function getBrandName(o) {
     return o.brandName || o.brand || o.brand_name || 'Untitled Brand';
@@ -319,6 +340,9 @@
     orders = orders.filter(o =>
       o.userEmail === session.email || o.email === session.email
     );
+
+    // Push any locally-stored requests to the backend (admin visibility)
+    syncDesignRequests(orders);
 
     // Calculate stats
     const seenBrands = new Set();
