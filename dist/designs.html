@@ -435,6 +435,91 @@
         </div>`;
       }).join('')}
     `;
+
+    // ── Fetch delivered designs from backend & merge into cards ──
+    try {
+      const token = localStorage.getItem('pencilbear_token') || '';
+      const drRes = await fetch(API_BASE + '/api/my-designs?email=' + encodeURIComponent(session.email), {
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+      });
+      if (drRes.ok) {
+        const drData = await drRes.json();
+        const delivered = drData.requests || [];
+        if (delivered.length > 0) {
+          // Build lookup: brand_name(lower) → [{images:[...], status}]
+          const drMap = {};
+          delivered.forEach(function(d) {
+            const key = (d.brand_name || '').toLowerCase();
+            if (!drMap[key]) drMap[key] = [];
+            drMap[key].push(d);
+          });
+
+          let newDeliveredCount = 0;
+          let newTotalImages = 0;
+
+          // Patch each order card that has delivered images
+          delivered.forEach(function(dr) {
+            const brandKey = (dr.brand_name || '').toLowerCase();
+            const images = dr.images || [];
+            if (images.length === 0) return;
+
+            // Find matching card placeholder
+            const cards = document.querySelectorAll('.d-order-card');
+            cards.forEach(function(card) {
+              const brandEl = card.querySelector('.d-order-brand');
+              if (!brandEl) return;
+              if ((brandEl.textContent || '').toLowerCase() !== brandKey) return;
+
+              // Replace generating placeholder with delivered images
+              const placeholder = card.querySelector('.d-generating-placeholder');
+              if (placeholder) {
+                placeholder.remove();
+              }
+              // Check if already has a design sheet
+              let sheet = card.querySelector('.d-design-sheet');
+              if (!sheet) {
+                sheet = document.createElement('div');
+                sheet.className = 'd-design-sheet';
+                sheet.innerHTML = '<div class="d-designs-grid"></div>';
+                card.appendChild(sheet);
+              }
+              const grid = sheet.querySelector('.d-designs-grid') || sheet;
+              const imgHtml = images.map(function(url, idx) {
+                return '<div class="d-thumb" onclick="openLb(\'' + url + '\')">' +
+                  '<img src="' + url + '" alt="' + (dr.brand_name || '') + ' — Design ' + (idx+1) +
+                       '" onerror="this.src=\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22>No Image</text></svg>\'"' +
+                       ' loading="lazy">' +
+                '</div>';
+              }).join('');
+              if (grid.classList && grid.classList.contains('d-designs-grid')) {
+                grid.innerHTML = imgHtml;
+              }
+
+              // Update badge → Delivered
+              const badge = card.querySelector('.d-badge');
+              if (badge) {
+                badge.className = 'd-badge d-badge-delivered';
+                badge.textContent = 'Delivered';
+              }
+
+              newDeliveredCount++;
+              newTotalImages += images.length;
+            });
+          });
+
+          // Update stat numbers
+          if (newDeliveredCount > 0) {
+            const statEls = document.querySelectorAll('.d-stat-num');
+            if (statEls[1]) statEls[1].textContent = newTotalImages; // Designs Delivered
+            if (statEls[2]) statEls[2].textContent = parseInt(statEls[2].textContent || '0') + newDeliveredCount; // Completed Brands
+            if (statEls[3]) { // Pending Delivery — decrease
+              const cur = parseInt(statEls[3].textContent || '0');
+              statEls[3].textContent = Math.max(0, cur - newDeliveredCount);
+            }
+          }
+        }
+      }
+    } catch(e) { /* silently fail — localStorage fallback still works */ }
   }
 
   init();
