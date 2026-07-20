@@ -584,14 +584,16 @@
       </div>
     </div>
 
-    <!-- Design Requests Section (customer-submitted logo needs) -->
+    <!-- Design Requests Section (客户设计需求 — 跟中文版订单管理一模一样) -->
     <div class="section" id="designRequestsSection">
       <div class="section-header">
-        <h3>客户设计需求</h3>
-        <div class="section-tabs">
-          <button class="section-tab active" onclick="filterDesignRequests('all',this)">全部</button>
-          <button class="section-tab" onclick="filterDesignRequests('pending',this)">待处理</button>
-          <button class="section-tab" onclick="filterDesignRequests('resolved',this)">已处理</button>
+        <h3>订单管理</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="section-tabs">
+            <button class="section-tab active" onclick="filterDesignRequests('all',this)">全部</button>
+            <button class="section-tab" onclick="filterDesignRequests('pending',this)">待处理</button>
+            <button class="section-tab" onclick="filterDesignRequests('resolved',this)">已处理</button>
+          </div>
         </div>
       </div>
       <div class="table-wrap">
@@ -605,14 +607,15 @@
               <th>色彩</th>
               <th>提交时间</th>
               <th>状态</th>
+              <th>设计稿</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody id="designRequestsTable"></tbody>
         </table>
         <div class="empty-state" id="designRequestsEmpty" style="display:none">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-          暂无设计需求
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          暂无订单
         </div>
       </div>
     </div>
@@ -763,9 +766,13 @@ async function fetchUsers() {
 function getUsers() { return _cachedUsers; }
 function saveUsers(users) { _cachedUsers = users; }
 
-/* ===================== Design Requests ===================== */
+/* ===================== Design Requests (客户设计需求 — 订单管理) ===================== */
 let _designRequests = [];
 let _drFilter = 'all';
+/* 设计需求详情面板状态 */
+let _currentDRId = null;
+let _currentDRImages = [];
+
 async function loadDesignRequests() {
   const token = localStorage.getItem('pencilbear_admin_token') || '';
   if (!token) return;
@@ -799,32 +806,241 @@ function renderDesignRequests() {
   if (list.length === 0) {
     tbody.innerHTML = '';
     const empty = document.getElementById('designRequestsEmpty');
-    if (empty) empty.style.display = 'block';
+    if (empty) empty.style.display = '';
     return;
   }
   const empty = document.getElementById('designRequestsEmpty');
   if (empty) empty.style.display = 'none';
+
   tbody.innerHTML = list.map(r => {
-    const resolved = r.status === 'resolved';
-    return `<tr>
-      <td>#${r.id}</td>
-      <td>${(r.email || '').replace(/</g, '&lt;')}</td>
-      <td>${(r.brand_name || '').replace(/</g, '&lt;')}</td>
-      <td>${(r.industry || '').replace(/</g, '&lt;')}</td>
-      <td>${(r.color_mode || '').replace(/</g, '&lt;')}</td>
-      <td>${fmtDRDate(r.created_at)}</td>
-      <td>${resolved ? '<span style="color:#10b981">已处理</span>' : '<span style="color:#f59e0b">待处理</span>'}</td>
-      <td>${resolved ? '' : `<button class="page-btn" onclick="resolveDesignRequest(${r.id})">标记已处理</button>`}</td>
-    </tr>`;
+    const id = r.id || '';
+    const email = (r.email || '').replace(/</g, '&lt;');
+    const brandName = (r.brand_name || '').replace(/</g, '&lt;');
+    const industry = (r.industry || '-').replace(/</g, '&lt;');
+    const colorMode = (r.color_mode || '').replace(/</g, '&lt;');
+    const status = r.status || 'pending';
+    const resolved = status === 'resolved';
+    const statusClass = resolved ? 'completed' : 'pending';
+    const statusText = resolved ? '已处理' : '待处理';
+    const imageCount = r.image_count !== undefined ? r.image_count : 0;
+    return '<tr>' +
+      '<td style="font-family:monospace;font-size:12px;color:rgba(255,255,255,0.3)">#' + id + '</td>' +
+      '<td style="font-weight:500;color:#fff">' + email + '</td>' +
+      '<td style="font-weight:600;color:#a78bfa;font-size:14px">' + brandName + '</td>' +
+      '<td style="font-size:12px;color:#94a3b8">' + industry + '</td>' +
+      '<td><span style="padding:2px 8px;border-radius:6px;background:' + (colorMode === 'color' ? 'rgba(167,139,250,0.15)' : 'rgba(148,163,184,0.15)') + ';color:' + (colorMode === 'color' ? '#c4b5fd' : '#94a3b8') + ';font-size:12px">' + (colorMode || '-') + '</span></td>' +
+      '<td style="font-size:12px;color:#94a3b8">' + fmtDRDate(r.created_at) + '</td>' +
+      '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
+      '<td>' + imageCount + ' 张</td>' +
+      '<td>' +
+        '<button class="action-btn view" onclick="openDesignDetail(\'' + id + '\')">详情</button>' +
+        '<button class="action-btn upload" onclick="openDesignDetail(\'' + id + '\')">上传</button>' +
+        '<button class="action-btn delete" onclick="deleteDesignRequest(\'' + id + '\')" style="margin-top:4px">删除</button>' +
+      '</td></tr>';
   }).join('');
 }
+
+/* ====== 设计需求详情侧边弹窗 ====== */
+async function openDesignDetail(drId) {
+  _currentDRId = drId;
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  document.getElementById('panelTitle').textContent = '加载中...';
+  document.getElementById('panelOverlay').classList.add('open');
+  document.getElementById('orderPanel').classList.add('open');
+  const body = document.getElementById('panelBody');
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3)">加载中...</div>';
+
+  try {
+    // 获取需求详情 + 图片列表
+    const [drRes, imgRes] = await Promise.all([
+      fetch('/api/admin/designs?limit=500', { headers: { 'Authorization': 'Bearer ' + token } }),
+      fetch('/api/admin/designs/' + drId + '/images', { headers: { 'Authorization': 'Bearer ' + token } }).catch(() => ({ ok: true, json: () => ({ images: [] }) }))
+    ]);
+    const drData = await drRes.json();
+    const imgData = await imgRes.json();
+    const dr = (drData.requests || []).find(r => Number(r.id) === Number(drId));
+    if (!dr) { body.innerHTML = '<div class="empty-state">订单不存在</div>'; return; }
+
+    _currentDRImages = imgData.images || [];
+    const status = dr.status || 'pending';
+    const resolved = status === 'resolved';
+    const statusClass = resolved ? 'completed' : 'pending';
+    const statusText = resolved ? '已处理' : '待处理';
+
+    /* 渲染图片列表 */
+    let imagesHtml = '';
+    if (_currentDRImages.length > 0) {
+      imagesHtml = _currentDRImages.map((img, idx) => {
+        const url = '/uploads/design_requests/' + img.filename;
+        const name = img.original_name || img.filename;
+        return '<div class="design-card">' +
+          '<div class="design-thumb" onclick="openImgLb(\'' + url + '\')">' +
+          '<img src="' + url + '" alt="' + name + '" loading="lazy">' +
+          '</div>' +
+          '<div class="design-info">' +
+          '<div class="design-name">' + name + '</div>' +
+          '<div class="design-meta">' + (img.file_size ? (img.file_size / 1024).toFixed(1) + ' KB' : '') + ' · ' + fmtDate(img.created_at) + '</div>' +
+          '<div class="design-actions">' +
+          '<button class="action-btn delete" onclick="deleteDesignImage(\'' + drId + '\',\'' + img.id + '\')">删除</button>' +
+          '</div></div></div>';
+      }).join('');
+    } else {
+      imagesHtml = '<div class="empty-state" style="margin:16px 0">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>暂无设计稿</div>';
+    }
+
+    document.getElementById('panelTitle').textContent = '订单详情';
+    body.innerHTML = '' +
+      '<div class="info-row"><span class="info-label">ID</span><span class="info-value" style="font-family:monospace;font-size:12px">#' + drId + '</span></div>' +
+      '<div class="info-row"><span class="info-label">用户</span><span class="info-value">' + (dr.email || '') + '</span></div>' +
+      '<div class="info-row"><span class="info-label">品牌名称</span><span class="info-value" style="font-size:16px;font-weight:700;color:#fff">' + (dr.brand_name || '') + '</span></div>' +
+      '<div class="info-row"><span class="info-label">行业</span><span class="info-value">' + (dr.industry || '-') + '</span></div>' +
+      '<div class="info-row"><span class="info-label">色彩模式</span><span class="info-value"><span style="padding:3px 12px;border-radius:8px;background:' + ((dr.color_mode || '') === 'color' ? 'rgba(167,139,250,0.15)' : 'rgba(148,163,184,0.15)') + ';color:' + ((dr.color_mode || '') === 'color' ? '#c4b5fd' : '#94a3b8') + ';font-size:13px">' + (dr.color_mode || '未选择') + '</span></span></div>' +
+      '<div class="info-row"><span class="info-label">描述</span><span class="info-value">' + (dr.description || '-') + '</span></div>' +
+      '<div class="info-row"><span class="info-label">提交时间</span><span class="info-value">' + fmtDRDate(dr.created_at) + '</span></div>' +
+      '<div class="info-row"><span class="info-label">状态</span><span class="info-value"><span class="status-badge ' + statusClass + '">' + statusText + '</span> ' +
+        (!resolved ? '<button class="page-btn" onclick="resolveDesignRequest(' + drId + ');setTimeout(()=>openDesignDetail(' + drId + '),300)" style="margin-left:8px">标记已处理</button>' : '') +
+      '</span></div>' +
+      '<div style="margin-top:24px"><h4 style="font-size:14px;font-weight:600;color:#fff;margin-bottom:8px">已上传设计稿 (' + _currentDRImages.length + ')</h4><div class="design-list">' + imagesHtml + '</div></div>' +
+      '<div style="margin-top:24px"><h4 style="font-size:14px;font-weight:600;color:#fff;margin-bottom:8px">上传新设计稿</h4>' +
+      '<div class="upload-zone" onclick="document.getElementById(\'drFileInput\').click()" id="drUploadZone" tabindex="0">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+      '<p>点击上传 / 粘贴图片（Ctrl+V）<br><span style="font-size:11px;opacity:0.5">支持 PNG / JPG / WebP / GIF，单文件最大 10MB</span></p>' +
+      '<input type="file" id="drFileInput" accept="image/*" multiple onchange="handleDRFileSelect(event)" style="display:none"></div>' +
+      '<div id="drUploadPreview"></div></div>' +
+      '<div style="margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07)">' +
+      '<button class="action-btn delete" onclick="deleteDesignRequest(\'' + drId + '\')" style="padding:6px 14px;font-size:12px">删除此订单</button></div>';
+  } catch(e) {
+    body.innerHTML = '<div class="empty-state">加载失败: ' + e.message + '</div>';
+  }
+}
+
+function closePanel() {
+  document.getElementById('orderPanel').classList.remove('open');
+  document.getElementById('panelOverlay').classList.remove('open');
+  _currentDRId = null;
+  _currentDRImages = [];
+}
+
+/* ====== 设计需求图片上传 ====== */
+function handleDRFileSelect(e) {
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token || !_currentDRId) { showToast('请先登录', 'error'); return; }
+
+  const preview = document.getElementById('drUploadPreview');
+  preview.innerHTML = '<div class="upload-preview">' +
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+    files.map(f => '<div style="font-size:12px;color:#94a3b8">' + f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)</div>').join('') +
+    '</div></div>' +
+    '<button class="upload-confirm-btn" onclick="confirmDRUpload()">确认上传 ' + files.length + ' 张图片</button>' +
+    '<button class="upload-cancel-btn" onclick="cancelDRUpload()">取消</button>';
+
+  window._drPendingFiles = files;
+}
+
+/* 粘贴上传（Ctrl+V） */
+function handleDRPasteUpload(e) {
+  if (!_currentDRId) return;
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  const imageFiles = [];
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      const file = items[i].getAsFile();
+      if (file) imageFiles.push(file);
+    }
+  }
+  if (imageFiles.length === 0) return;
+  e.preventDefault();
+  e.stopPropagation();
+  handleDRFileSelect({ target: { files: imageFiles } });
+  showToast('已粘贴 ' + imageFiles.length + ' 张图片，请点击确认上传', 'success');
+}
+document.addEventListener('paste', handleDRPasteUpload);
+
+function cancelDRUpload() {
+  window._drPendingFiles = null;
+  const p = document.getElementById('drUploadPreview');
+  if (p) p.innerHTML = '';
+  const fi = document.getElementById('drFileInput');
+  if (fi) fi.value = '';
+}
+
+async function confirmDRUpload() {
+  const files = window._drPendingFiles;
+  if (!_currentDRId || !files || files.length === 0) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token) { showToast('登录已过期', 'error'); return; }
+
+  const formData = new FormData();
+  for (const f of files) { formData.append('images', f); }
+
+  try {
+    const p = document.getElementById('drUploadPreview');
+    if (p) p.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8">上传中...</div>';
+    const resp = await fetch('/api/admin/designs/' + _currentDRId + '/images', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: formData
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || '上传失败', 'error'); cancelDRUpload(); return; }
+    cancelDRUpload();
+    loadDesignRequests();
+    await openDesignDetail(_currentDRId);
+    showToast('成功上传 ' + (data.count || files.length) + ' 张图片', 'success');
+  } catch(e) {
+    showToast('上传失败: ' + e.message, 'error');
+    cancelDRUpload();
+  }
+}
+
+/* ====== 删除设计需求图片 ====== */
+async function deleteDesignImage(drId, imageId) {
+  if (!confirm('确定要删除这张图片吗？')) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token) { showToast('登录已过期', 'error'); return; }
+  try {
+    const resp = await fetch('/api/admin/designs/' + drId + '/images/' + imageId, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || '删除失败', 'error'); return; }
+    loadDesignRequests();
+    if (_currentDRId === String(drId)) openDesignDetail(drId);
+    showToast('图片已删除', 'success');
+  } catch(e) {
+    showToast('删除失败', 'error');
+  }
+}
+
+/* ====== 标记已处理 ====== */
 async function resolveDesignRequest(id) {
   const token = localStorage.getItem('pencilbear_admin_token') || '';
   if (!token) return;
   try {
     const resp = await fetch('/api/admin/designs/' + id + '/resolve', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
-    if (resp.ok) loadDesignRequests();
+    if (resp.ok) { loadDesignRequests(); showToast('已标记为已处理', 'success'); }
   } catch (e) {}
+}
+
+/* ====== 删除设计需求 ====== */
+async function deleteDesignRequest(id) {
+  if (!confirm('确定要删除这条设计需求吗？')) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token) { showToast('登录已过期', 'error'); return; }
+  try {
+    const resp = await fetch('/api/admin/designs/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+    if (!resp.ok) { const d = await resp.json().catch(() => ({})); showToast(d.error || '删除失败', 'error'); return; }
+    closePanel();
+    loadDesignRequests();
+    showToast('已删除', 'success');
+  } catch(e) {
+    showToast('删除失败: ' + e.message, 'error');
+  }
 }
 // ====== 订单API ======
 let _cachedOrders = [];
