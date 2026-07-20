@@ -503,8 +503,11 @@ app.post('/api/designs', async (req, res) => {
     ]
   );
   await saveDb(config.dbPath);
-  const id = get('SELECT last_insert_rowid() AS id');
-  res.json({ ok: true, id: id ? id.id : null });
+  const row = get(
+    'SELECT id FROM design_requests WHERE email = ? AND brand_name = ? AND created_at = ? ORDER BY id DESC LIMIT 1',
+    [email, brandName, createdAt]
+  );
+  res.json({ ok: true, id: row ? row.id : null });
 });
 
 app.get('/api/admin/designs', requireAdmin, (req: any, res) => {
