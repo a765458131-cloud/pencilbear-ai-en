@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <title>PencilBear AI — 后台管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+      background:#06060e;color:#e8e8f0;min-height:100vh;-webkit-font-smoothing:antialiased;
+    }
+    a{color:inherit;text-decoration:none}img{display:block;max-width:100%}
+    button{font-family:inherit;cursor:pointer;border:none}
+    input{font-family:inherit}
+
+    /* ===== Login Screen ===== */
+    .login-screen{
+      display:flex;align-items:center;justify-content:center;min-height:100vh;
+      background:radial-gradient(ellipse 120% 80% at 50% 110%, #1a2060 0%, #090920 50%, #06060e 100%);
+    }
+    .login-screen.hidden{display:none}
+    .login-card{
+      background:rgba(16,16,38,0.96);border:1px solid rgba(255,255,255,0.1);
+      border-radius:20px;padding:40px 32px;width:100%;max-width:400px;
+      backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+      box-shadow:0 30px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.04) inset;
+    }
+    .login-card h1{font-size:24px;font-weight:700;color:#fff;margin-bottom:4px}
+    .login-card .sub{font-size:14px;color:rgba(255,255,255,0.35);margin-bottom:28px}
+    .login-card label{display:block;font-size:13px;font-weight:500;color:rgba(255,255,255,0.5);margin-bottom:6px}
+    .login-card input{
+      width:100%;padding:12px 14px;border-radius:12px;font-size:15px;
+      background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+      color:#fff;outline:none;margin-bottom:16px;
+      transition:border-color 0.2s,background 0.2s;
+    }
+    .login-card input:focus{border-color:rgba(99,102,241,0.5);background:rgba(255,255,255,0.08)}
+    .login-card input::placeholder{color:rgba(255,255,255,0.2)}
+    .login-btn{
+      width:100%;padding:13px 0;border-radius:12px;font-size:15px;font-weight:700;
+      background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;
+      box-shadow:0 4px 20px rgba(99,102,241,0.25);transition:all 0.2s;
+    }
+    .login-btn:hover{box-shadow:0 6px 30px rgba(99,102,241,0.4);transform:translateY(-1px)}
+    .login-error{font-size:13px;color:#f87171;text-align:center;margin-bottom:12px;display:none}
+    .login-error.visible{display:block}
+
+    /* ===== Dashboard Layout ===== */
+    .dashboard{display:none;min-height:100vh}
+    .dashboard.open{display:flex;flex-direction:column}
+
+    /* ===== Top Bar ===== */
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 32px;height:60px;
+      background:rgba(6,6,14,0.8);border-bottom:1px solid rgba(255,255,255,0.06);
+      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    }
+    .topbar-left{display:flex;align-items:center;gap:12px}
+    .topbar-left h2{font-size:18px;font-weight:700;color:#fff}
+    .topbar-left .badge{
+      font-size:11px;font-weight:600;color:#a78bfa;background:rgba(167,139,250,0.12);
+      border:1px solid rgba(167,139,250,0.2);padding:3px 10px;border-radius:100px;
+    }
+    .topbar-right{display:flex;align-items:center;gap:14px}
+    .topbar-user{font-size:13px;color:rgba(255,255,255,0.5)}
+    .topbar-logout{
+      font-size:13px;font-weight:600;color:rgba(255,255,255,0.4);background:none;
+      padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);transition:all 0.2s;
+    }
+    .topbar-logout:hover{color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.06)}
+
+    /* ===== Main Content ===== */
+    .main-content{padding:28px 32px;flex:1;overflow-y:auto}
+
+    /* ===== Stats Row ===== */
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+    @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:500px){.stats-row{grid-template-columns:1fr}}
+    .stat-card{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
+      border-radius:16px;padding:20px;
+    }
+    .stat-label{font-size:12px;font-weight:500;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px}
+    .stat-value{font-size:32px;font-weight:800;color:#fff;line-height:1}
+    .stat-card.pending .stat-value{color:#f59e0b}
+    .stat-card.completed .stat-value{color:#10b981}
+    .stat-card.primary .stat-value{color:#6366f1}
+
+    /* ===== Section ===== */
+    .section{margin-bottom:32px}
+    .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .section-header h3{font-size:16px;font-weight:700;color:#fff}
+    .user-search-box{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:6px 14px;min-width:240px}
+    .user-search-box svg{width:16px;height:16px;color:rgba(255,255,255,0.4);flex-shrink:0}
+    .user-search-box input{background:transparent;border:none;outline:none;color:#fff;font-size:13px;font-family:inherit;width:100%}
+    .user-search-box input::placeholder{color:rgba(255,255,255,0.3)}
+    .pagination{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:0 4px}
+    .pagination-info{font-size:12px;color:rgba(255,255,255,0.4)}
+    .pagination-controls{display:flex;align-items:center;gap:4px}
+    .page-btn{min-width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;padding:0 8px}
+    .page-btn:hover{background:rgba(255,255,255,0.08);color:#fff;border-color:rgba(255,255,255,0.15)}
+    .page-btn.active{background:rgba(139,92,246,0.2);color:#c4b5fd;border-color:rgba(139,92,246,0.3)}
+    .page-btn:disabled{opacity:0.3;cursor:not-allowed}
+    .page-btn:disabled:hover{background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.08)}
+    .case-upload-area{border:2px dashed rgba(255,255,255,0.15);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all 0.3s;margin-bottom:20px}
+    .case-upload-area:hover{border-color:rgba(139,92,246,0.4);background:rgba(139,92,246,0.04)}
+    .case-upload-area.dragover{border-color:rgba(139,92,246,0.6);background:rgba(139,92,246,0.08)}
+    .case-upload-area svg{width:32px;height:32px;color:rgba(255,255,255,0.3);margin-bottom:8px}
+    .case-upload-area p{font-size:13px;color:rgba(255,255,255,0.5);margin:0}
+    .case-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+    .case-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;cursor:grab;transition:all 0.2s;position:relative}
+    .case-card:hover{border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.06)}
+    .case-card.dragging{opacity:0.4;cursor:grabbing}
+    .case-card.drag-over{border-color:rgba(139,92,246,0.5);box-shadow:0 0 0 2px rgba(139,92,246,0.2)}
+    .case-card img{width:100%;height:160px;object-fit:cover;display:block;background:rgba(0,0,0,0.2)}
+    .case-card-info{padding:10px 12px}
+    .case-card-tag{font-size:12px;color:rgba(255,255,255,0.7);font-weight:500;margin-bottom:6px;cursor:text;outline:none;border-radius:4px;padding:2px 4px;margin:-2px -4px}
+    .case-card-tag:focus{background:rgba(139,92,246,0.1);box-shadow:0 0 0 1px rgba(139,92,246,0.3)}
+    .case-card-actions{display:flex;gap:6px;align-items:center}
+    .case-card-order{font-size:11px;color:rgba(255,255,255,0.3);font-weight:600}
+    .case-delete-btn{margin-left:auto;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);color:#f87171;font-size:11px;padding:3px 8px;border-radius:6px;cursor:pointer;transition:all 0.2s}
+    .case-delete-btn:hover{background:rgba(248,113,113,0.2);border-color:rgba(248,113,113,0.3)}
+    .case-drag-handle{position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.5);border-radius:6px;padding:3px 6px;cursor:grab;z-index:2;opacity:0;transition:opacity 0.2s}
+    .case-card:hover .case-drag-handle{opacity:1}
+    .case-drag-handle svg{width:14px;height:14px;color:rgba(255,255,255,0.6)}
+    .case-save-order-btn{margin-top:16px;padding:8px 20px;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;display:none}
+    .case-save-order-btn:hover{background:rgba(139,92,246,0.25)}
+    .case-save-order-btn.show{display:inline-block}
+    .case-tag-input{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px;color:#fff;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px}
+    .case-tag-input:focus{border-color:rgba(139,92,246,0.3)}
+    .case-file-input{display:none}
+    .section-tabs{display:flex;gap:4px;background:rgba(255,255,255,0.04);border-radius:10px;padding:3px}
+    .section-tab{
+      font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);padding:6px 14px;
+      border-radius:8px;background:none;transition:all 0.15s;
+    }
+    .section-tab.active{background:rgba(255,255,255,0.08);color:#fff}
+    .section-tab:hover:not(.active){color:rgba(255,255,255,0.7)}
+
+    /* ===== Table ===== */
+    .table-wrap{
+      background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);
+      border-radius:16px;overflow:hidden;
+    }
+    table{width:100%;border-collapse:collapse}
+    th{
+      text-align:left;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);
+      text-transform:uppercase;letter-spacing:0.06em;padding:14px 18px;
+      background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+    td{padding:14px 18px;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.04)}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,0.02)}
+
+    .status-badge{
+      display:inline-flex;align-items:center;gap:5px;
+      font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;
+    }
+    .status-badge.pending{background:rgba(245,158,11,0.12);color:#f59e0b;border:1px solid rgba(245,158,11,0.2)}
+    .status-badge.completed{background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.2)}
+    .status-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+
+    .action-btn{
+      font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;transition:all 0.15s;
+    }
+    .action-btn.view{background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.2)}
+    .action-btn.view:hover{background:rgba(99,102,241,0.2);color:#a5b4fc}
+    .action-btn.upload{background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.2)}
+    .action-btn.upload:hover{background:rgba(16,185,129,0.2)}
+    .action-btn.delete{
+      background:rgba(248,113,113,0.1);color:rgba(248,113,113,0.7);border:1px solid rgba(248,113,113,0.15);
+      font-size:11px;padding:3px 8px;border-radius:6px;
+    }
+    .action-btn.delete:hover{background:rgba(248,113,113,0.2);color:#f87171}
+
+    /* Credit adjustment buttons */
+    .credit-btn{
+      padding:2px 7px;border-radius:5px;border:1px solid;
+      font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;
+      background:transparent;line-height:1.4;
+    }
+    .credit-btn.minus{
+      color:#f87171;border-color:rgba(248,113,113,0.25);
+    }
+    .credit-btn.minus:hover{background:rgba(248,113,113,0.15);color:#fca5a5}
+    .credit-btn.plus{
+      color:#34d399;border-color:rgba(52,211,153,0.25);
+    }
+    .credit-btn.plus:hover{background:rgba(52,211,153,0.15);color:#6ee7b7}
+    .credit-btn.adjust-btn{
+      color:#a78bfa;border-color:rgba(167,139,250,0.25);
+    }
+    .credit-btn.adjust-btn:hover{background:rgba(167,139,250,0.15);color:#c4b5fd}
+
+    /* Adjust Modal */
+    .adjust-modal{
+      display:none;position:fixed;inset:0;z-index:600;
+      background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);
+      align-items:center;justify-content:center;
+    }
+    .adjust-modal.open{display:flex}
+    .adjust-card{
+      background:#0f0f2e;border:1px solid rgba(255,255,255,0.08);
+      border-radius:16px;padding:28px;width:400px;max-width:92vw;
+      box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    }
+    .adjust-card h3{
+      font-size:18px;font-weight:600;color:#fff;margin:0 0 6px;
+    }
+    .adjust-card .adjust-sub{
+      font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:20px;
+    }
+    .adjust-card .adjust-info{
+      display:flex;gap:16px;margin-bottom:20px;
+    }
+    .adjust-card .adjust-info-item{
+      flex:1;background:rgba(255,255,255,0.03);border-radius:10px;
+      padding:12px;text-align:center;border:1px solid rgba(255,255,255,0.05);
+    }
+    .adjust-card .adjust-info-item .val{
+      font-size:22px;font-weight:700;color:#a78bfa;
+    }
+    .adjust-card .adjust-info-item .label{
+      font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px;
+    }
+    .adjust-card .adjust-info-item:last-child .val{color:#22c55e}
+    .adjust-card label{
+      display:block;font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px;font-weight:500;
+    }
+    .adjust-card input{
+      width:100%;padding:10px 14px;background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.1);border-radius:10px;
+      color:#fff;font-size:16px;font-weight:600;outline:none;
+      transition:border-color .2s;box-sizing:border-box;
+    }
+    .adjust-card input:focus{border-color:#a78bfa}
+    .adjust-card .adjust-hint{
+      font-size:11px;color:rgba(255,255,255,0.25);margin-top:6px;
+    }
+    .adjust-card .adjust-actions{
+      display:flex;gap:10px;margin-top:20px;
+    }
+    .adjust-card .adjust-actions button{
+      flex:1;padding:10px;border-radius:10px;border:none;
+      font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;
+    }
+    .adjust-card .btn-cancel{
+      background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6);
+    }
+    .adjust-card .btn-cancel:hover{background:rgba(255,255,255,0.1);color:#fff}
+    .adjust-card .btn-confirm{
+      background:linear-gradient(135deg,#a78bfa,#7c6ff0);color:#fff;
+    }
+    .adjust-card .btn-confirm:hover{
+      box-shadow:0 4px 16px rgba(167,139,250,0.3);transform:translateY(-1px);
+    }
+
+    /* Toast */
+    .toast{
+      position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
+      padding:10px 24px;border-radius:10px;font-size:13px;font-weight:500;
+      z-index:9999;pointer-events:none;opacity:0;transition:opacity .3s;
+      white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;
+    }
+    .toast.show,.toast.visible{opacity:1}
+    .toast.success{background:rgba(52,211,153,0.15);color:#34d399;border:1px solid rgba(52,211,153,0.2)}
+    .toast.error{background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.2)}
+
+    /* ===== Panel / Slide-over ===== */
+    .panel-overlay{
+      display:none;position:fixed;inset:0;z-index:500;
+      background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);
+    }
+    .panel-overlay.open{display:block}
+    .panel{
+      position:fixed;top:0;right:0;bottom:0;width:520px;max-width:100vw;z-index:501;
+      background:#0c0c22;border-left:1px solid rgba(255,255,255,0.08);
+      box-shadow:-20px 0 60px rgba(0,0,0,0.6);
+      transform:translateX(100%);transition:transform 0.3s ease;
+      display:flex;flex-direction:column;
+    }
+    .panel.open{transform:translateX(0)}
+    .panel-header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.07);
+      flex-shrink:0;
+    }
+    .panel-header h3{font-size:16px;font-weight:700;color:#fff}
+    .panel-close{
+      width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.06);
+      color:rgba(255,255,255,0.5);font-size:16px;display:flex;align-items:center;
+      justify-content:center;transition:all 0.2s;
+    }
+    .panel-close:hover{background:rgba(255,255,255,0.12);color:#fff}
+    .panel-body{flex:1;overflow-y:auto;padding:20px 24px}
+
+    /* Panel info rows */
+    .info-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+    .info-row .info-label{font-size:12px;color:rgba(255,255,255,0.35)}
+    .info-row .info-value{font-size:13px;color:rgba(255,255,255,0.8);font-weight:500}
+
+    /* ===== Design cards in panel ===== */
+    .design-list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+    .design-card{
+      display:flex;gap:14px;padding:12px;border-radius:14px;
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);
+      transition:all 0.2s;
+    }
+    .design-card:hover{border-color:rgba(255,255,255,0.12)}
+    .design-thumb{
+      width:80px;height:80px;border-radius:10px;overflow:hidden;
+      background:rgba(255,255,255,0.04);flex-shrink:0;cursor:pointer;
+      border:1px solid rgba(255,255,255,0.06);
+    }
+    .design-thumb img{width:100%;height:100%;object-fit:cover}
+    .design-info{flex:1;min-width:0}
+    .design-name{font-size:14px;font-weight:600;color:#fff;margin-bottom:4px}
+    .design-meta{font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:8px}
+    .design-actions{display:flex;gap:6px}
+
+    /* ===== Upload zone ===== */
+    .upload-zone{
+      border:2px dashed rgba(255,255,255,0.12);border-radius:14px;
+      padding:24px;text-align:center;cursor:pointer;transition:all 0.2s;
+      margin-top:16px;
+    }
+    .upload-zone:hover{border-color:rgba(99,102,241,0.4);background:rgba(99,102,241,0.04)}
+    .upload-zone:focus{outline:none;border-color:rgba(99,102,241,0.5);background:rgba(99,102,241,0.06)}
+    .upload-zone svg{width:32px;height:32px;opacity:0.3;margin-bottom:8px}
+    .upload-zone p{font-size:13px;color:rgba(255,255,255,0.3)}
+    .upload-zone input{display:none}
+    .upload-preview{
+      display:flex;gap:10px;align-items:center;padding:10px 14px;
+      background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);
+      border-radius:12px;margin-top:12px;
+    }
+    .upload-preview img{width:48px;height:48px;border-radius:8px;object-fit:cover}
+    .upload-preview .preview-info{flex:1}
+    .upload-preview .preview-name{font-size:13px;font-weight:500;color:#fff}
+    .upload-preview .preview-size{font-size:11px;color:rgba(255,255,255,0.3)}
+    .upload-confirm-btn{
+      padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;
+      background:linear-gradient(135deg,#10b981,#059669);color:#fff;
+      transition:all 0.2s;margin-top:12px;
+    }
+    .upload-confirm-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(16,185,129,0.3)}
+    .upload-cancel-btn{
+      padding:7px 16px;border-radius:8px;font-size:12px;font-weight:500;
+      background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.5);
+      border:1px solid rgba(255,255,255,0.08);margin-left:8px;transition:all 0.2s;
+    }
+    .upload-cancel-btn:hover{background:rgba(255,255,255,0.08);color:#fff}
+
+    /* ===== Image lightbox ===== */
+    .img-lb{
+      display:none;position:fixed;inset:0;z-index:600;
+      background:rgba(0,0,0,0.92);align-items:center;justify-content:center;padding:40px;
+    }
+    .img-lb.open{display:flex}
+    .img-lb img{max-width:min(90vw,800px);max-height:85vh;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,0.8)}
+    .img-lb-close{
+      position:absolute;top:24px;right:28px;width:38px;height:38px;
+      border-radius:50%;background:rgba(255,255,255,0.1);
+      border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:18px;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;
+    }
+    .img-lb-close:hover{background:rgba(255,255,255,0.2)}
+
+    /* Toast */
+    .toast{
+      position:fixed;bottom:32px;left:50%;transform:translateX(-50%);z-index:700;
+      background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);
+      color:#fff;font-size:14px;font-weight:500;padding:12px 24px;
+      border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.6);
+      opacity:0;pointer-events:none;transition:opacity 0.3s ease;
+    }
+    .toast.visible{opacity:1}
+    .toast.success{border-color:rgba(52,211,153,0.3)}
+    .toast.error{border-color:rgba(248,113,113,0.3)}
+
+    /* Delete confirm */
+    .confirm-text{font-size:13px;color:rgba(255,255,255,0.5);margin:8px 0 16px;line-height:1.6}
+    .confirm-actions{display:flex;gap:10px}
+    .confirm-yes{
+      padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;
+      background:#ef4444;color:#fff;transition:all 0.2s;
+    }
+    .confirm-yes:hover{background:#dc2626}
+    .confirm-no{
+      padding:8px 20px;border-radius:8px;font-size:13px;font-weight:500;
+      background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6);
+      border:1px solid rgba(255,255,255,0.08);transition:all 0.2s;
+    }
+    .confirm-no:hover{background:rgba(255,255,255,0.1);color:#fff}
+
+    .empty-state{text-align:center;padding:40px 20px;color:rgba(255,255,255,0.2);font-size:14px}
+    .empty-state svg{width:40px;height:40px;margin:0 auto 12px;opacity:0.25;display:block}
+  </style>
+</head>
+<body>
+
+<!-- ===== Login Screen ===== -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <h1>PencilBear AI 后台</h1>
+    <p class="sub">管理员登录</p>
+    <label>邮箱</label>
+    <input type="email" id="adminEmail" placeholder="admin@pencilbear.ai" autocomplete="off">
+    <label>密码</label>
+    <input type="password" id="adminPassword" placeholder="输入密码" autocomplete="off">
+    <p class="login-error" id="loginError">邮箱或密码错误</p>
+    <button class="login-btn" onclick="handleLogin()">登录后台</button>
+  </div>
+</div>
+
+<!-- ===== Dashboard ===== -->
+<div class="dashboard" id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2>PencilBear AI</h2>
+      <span class="badge">管理后台</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-user" id="adminUserDisplay"></span>
+      <button class="topbar-logout" onclick="handleLogout()">退出</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card primary">
+        <div class="stat-label">注册用户</div>
+        <div class="stat-value" id="statUsers">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">总订单数</div>
+        <div class="stat-value" id="statOrders">0</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="stat-label">待处理</div>
+        <div class="stat-value" id="statPending">0</div>
+      </div>
+      <div class="stat-card completed">
+        <div class="stat-label">已交付</div>
+        <div class="stat-value" id="statCompleted">0</div>
+      </div>
+    </div>
+
+    <!-- 浏览量统计 -->
+    <div class="stats-row" style="margin-top:12px" id="trackStatsRow">
+      <div class="stat-card" style="border-left:3px solid #6366f1">
+        <div class="stat-label"><span style="margin-right:4px">&#128065;</span>今日浏览 PV</div>
+        <div class="stat-value" id="todayPV" style="font-size:26px;color:#6366f1">-</div>
+        <div class="stat-sub" id="yesterdayPVSub" style="font-size:11px;color:rgba(255,255,255,0.35)"></div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid #10b981">
+        <div class="stat-label"><span style="margin-right:4px">&#129398;</span>今日访客 UV</div>
+        <div class="stat-value" id="todayUV" style="font-size:26px;color:#10b981">-</div>
+        <div class="stat-sub" id="yesterdayUVSub" style="font-size:11px;color:rgba(255,255,255,0.35)"></div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid #f59e0b">
+        <div class="stat-label"><span style="margin-right:4px">&#128202;</span>累计浏览 PV</div>
+        <div class="stat-value" id="totalPV" style="color:#f59e0b">-</div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid #8b5cf6">
+        <div class="stat-label"><span style="margin-right:4px">&#127760;</span>累计访客 UV</div>
+        <div class="stat-value" id="totalUV" style="color:#8b5cf6">-</div>
+      </div>
+    </div>
+
+    <!-- 营收统计 -->
+    <div class="stats-row" style="margin-top:12px" id="revenueStatsRow">
+      <div class="stat-card" style="border-left:3px solid #22c55e">
+        <div class="stat-label"><span style="margin-right:4px">&#128176;</span>累计营收</div>
+        <div class="stat-value" id="revTotal" style="color:#22c55e">$0.00</div>
+        <div class="stat-sub" id="revSettledSub" style="font-size:11px;color:rgba(255,255,255,0.35)"></div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid #f59e0b">
+        <div class="stat-label"><span style="margin-right:4px">&#128179;</span>已支付订单</div>
+        <div class="stat-value" id="revPaidOrders" style="color:#f59e0b">0</div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid #6366f1">
+        <div class="stat-label"><span style="margin-right:4px">&#128202;</span>已到账订单</div>
+        <div class="stat-value" id="revConsumed" style="color:#6366f1">0</div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid #8b5cf6">
+        <div class="stat-label"><span style="margin-right:4px">&#127991;</span>付费用户数</div>
+        <div class="stat-value" id="revUsers" style="color:#8b5cf6">0</div>
+      </div>
+    </div>
+
+    <!-- 7日趋势 -->
+    <div class="section" style="margin-top:16px" id="trendSection">
+      <div class="section-header">
+        <h3>&#128200; 7日浏览趋势</h3>
+      </div>
+      <div style="display:flex;gap:6px;align-items:flex-end;height:110px;padding:10px;overflow-x:auto;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.05)" id="trendChart"></div>
+    </div>
+
+    <!-- Users Section -->
+    <div class="section">
+      <div class="section-header">
+        <h3>用户列表</h3>
+        <div class="user-search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="userSearchInput" placeholder="搜索邮箱或用户名..." oninput="onUserSearch()">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>邮箱</th>
+              <th>注册时间</th>
+              <th>剩余次数</th>
+              <th>总积分(余额)</th>
+              <th>订单数</th>
+              <th>品牌名称</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="usersTable"></tbody>
+        </table>
+        <div class="empty-state" id="usersEmpty" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          暂无注册用户
+        </div>
+        <div class="pagination" id="userPagination" style="display:none">
+          <span class="pagination-info" id="userPageInfo"></span>
+          <div class="pagination-controls" id="userPageControls"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orders Section -->
+    <div class="section">
+      <div class="section-header">
+        <h3>订单管理</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="section-tabs">
+            <button class="section-tab active" onclick="filterOrders('all',this)">全部</button>
+            <button class="section-tab" onclick="filterOrders('pending',this)">待处理</button>
+            <button class="section-tab" onclick="filterOrders('completed',this)">已交付</button>
+          </div>
+          <div class="section-tabs" style="margin-left:4px">
+            <button class="section-tab" id="tabPaid" onclick="filterSource('paid',this)">付费</button>
+            <button class="section-tab" id="tabGift" onclick="filterSource('gift',this)">赠送</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>订单 ID</th>
+              <th>用户</th>
+              <th>品牌名称</th>
+              <th>行业</th>
+              <th>色彩</th>
+              <th>来源</th>
+              <th>提交时间</th>
+              <th>状态</th>
+              <th>设计稿</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTable"></tbody>
+        </table>
+        <div class="empty-state" id="ordersEmpty" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          暂无订单
+        </div>
+      </div>
+    </div>
+
+    <!-- 订单明细（付费 / 赠送）-->
+    <div class="section" style="margin-top:16px" id="revenueSection">
+      <div class="section-header">
+        <h3>&#128179; 订单明细</h3>
+        <div id="orderTabs" style="display:flex;gap:8px">
+          <button id="tabPaid" onclick="switchOrderTab('paid')" style="padding:6px 16px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid #6366f1;background:#6366f1;color:#fff;font-weight:600">&#128176; 付费订单</button>
+          <button id="tabGift" onclick="switchOrderTab('gift')" style="padding:6px 16px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.6);font-weight:600">&#127873; 赠送积分</button>
+        </div>
+      </div>
+
+      <!-- 付费视图 -->
+      <div id="paidView">
+        <div class="stats-row" style="margin-bottom:12px" id="revPlanRow"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>订单号</th>
+                <th>用户</th>
+                <th>套餐</th>
+                <th>金额</th>
+                <th>状态</th>
+                <th>支付时间</th>
+              </tr>
+            </thead>
+            <tbody id="paymentsTable"></tbody>
+          </table>
+          <div class="empty-state" id="paymentsEmpty" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            暂无支付记录
+          </div>
+        </div>
+      </div>
+
+      <!-- 赠送视图 -->
+      <div id="giftView" style="display:none">
+        <div class="stats-row" style="margin-bottom:12px" id="giftTypeRow"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>用户</th>
+                <th>赠送积分</th>
+                <th>类型</th>
+                <th>备注</th>
+                <th>时间</th>
+              </tr>
+            </thead>
+            <tbody id="giftsTable"></tbody>
+          </table>
+          <div class="empty-state" id="giftsEmpty" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            暂无赠送记录
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cases Section -->
+    <div class="section">
+      <div class="section-header">
+        <h3>案例管理</h3>
+        <button class="case-save-order-btn" id="saveOrderBtn" onclick="saveCaseOrder()">保存排序</button>
+      </div>
+      <div class="case-upload-area" id="caseUploadArea" onclick="document.getElementById('caseFileInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>点击或拖拽图片到此处上传案例</p>
+        <input type="file" id="caseFileInput" class="case-file-input" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" multiple>
+        <input type="text" id="caseTagInput" class="case-tag-input" placeholder="案例标签（可选，如：BRAND — Logo Collection）" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+      </div>
+      <div class="case-grid" id="caseGrid"></div>
+      <div class="empty-state" id="casesEmpty" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+        暂无案例，请上传图片
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== Order Detail Panel ===== -->
+<div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+<div class="panel" id="orderPanel">
+  <div class="panel-header">
+    <h3 id="panelTitle">订单详情</h3>
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<!-- ===== Image Lightbox ===== -->
+<div class="img-lb" id="imgLb" onclick="closeImgLb()">
+  <button class="img-lb-close">&times;</button>
+  <img src="" alt="" id="imgLbImg">
+</div>
+
+<!-- ===== Toast ===== -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== ADMIN AUTH ===================== */
+const ADMIN_KEY = 'pencilbear_admin';
+const DEFAULT_ADMIN = { email: 'admin@pencilbear.ai', password: 'a765458131' };
+
+function getAdmin() {
+  const saved = localStorage.getItem(ADMIN_KEY);
+  return saved ? JSON.parse(saved) : DEFAULT_ADMIN;
+}
+function getAdminSession() {
+  try { return JSON.parse(localStorage.getItem('pencilbear_admin_session')); }
+  catch { return null; }
+}
+function setAdminSession(email) { localStorage.setItem('pencilbear_admin_session', JSON.stringify({ email, time: Date.now() })); }
+function clearAdminSession() { localStorage.removeItem('pencilbear_admin_session'); localStorage.removeItem('pencilbear_admin_token'); localStorage.removeItem('pencilbear_token'); }
+
+/* ===================== DATA ACCESS ===================== */
+let _cachedUsers = [];
+async function fetchUsers() {
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token) {
+    console.error('[fetchUsers] No token found');
+    return [];
+  }
+  try {
+    const res = await fetch('/api/admin/users?limit=200', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[fetchUsers] API error:', data.error, 'status:', res.status);
+      if (res.status === 401) {
+        alert('登录已过期，请重新登录');
+        logout();
+      }
+      return [];
+    }
+    if (data.users) { _cachedUsers = data.users; return data.users; }
+    return [];
+  } catch(e) {
+    console.error('[fetchUsers] Network error:', e);
+    return _cachedUsers;
+  }
+}
+function getUsers() { return _cachedUsers; }
+function saveUsers(users) { _cachedUsers = users; }
+// ====== 订单API ======
+let _cachedOrders = [];
+async function fetchOrders() {
+  try {
+    const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token');
+    if (!token) { console.error('[fetchOrders] No token'); return _cachedOrders; }
+    const resp = await fetch('/api/admin/orders?page=1&limit=100', { headers: { 'Authorization': 'Bearer ' + token }});
+    if (!resp.ok) { console.error('[fetchOrders] API error', resp.status); return _cachedOrders; }
+    const data = await resp.json();
+    _cachedOrders = data.orders || [];
+    return _cachedOrders;
+  } catch (e) { console.error('[fetchOrders] Error:', e); return _cachedOrders; }
+}
+function getOrders() { return _cachedOrders; }
+// Deprecated: no longer save locally
+function saveOrders(orders) { /* no-op: using server API */ }
+
+/* ===================== CREDITS ADJUST ===================== */
+let adjustEmail = '';
+let adjustUserId = '';
+
+function openAdjustModal(userId, email, credits) {
+  adjustEmail = email;
+  adjustUserId = userId;
+  document.getElementById('adjustEmail').textContent = email;
+  document.getElementById('adjustCurrentCredits').textContent = credits || 0;
+  document.getElementById('adjustTotalAdded').textContent = '-';
+  document.getElementById('adjustAmount').value = '';
+  document.getElementById('adjustReason').value = '';
+  document.getElementById('adjustModal').classList.add('open');
+  setTimeout(() => document.getElementById('adjustAmount').focus(), 200);
+}
+
+function closeAdjustModal() {
+  document.getElementById('adjustModal').classList.remove('open');
+  adjustEmail = '';
+}
+
+async function doAdjustCredits() {
+  const amount = parseInt(document.getElementById('adjustAmount').value);
+  if (isNaN(amount) || amount === 0) {
+    alert('请输入有效的积分调整值（正数为增加，负数为减少）');
+    return;
+  }
+
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  try {
+    const res = await fetch('/api/admin/users/' + adjustUserId + '/add-points', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ points: amount })
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '操作失败'); return; }
+    closeAdjustModal();
+    // 只刷新用户数据，保留当前页码
+    await fetchUsers();
+    renderUsersPage();
+    showToast(
+      amount > 0
+        ? '已为 ' + adjustEmail + ' 增加 ' + amount + ' 积分，当前剩余 ' + (data.user?.points || 0) + ' 积分'
+        : '已为 ' + adjustEmail + ' 减少 ' + Math.abs(amount) + ' 积分，当前剩余 ' + (data.user?.points || 0) + ' 积分',
+      'success'
+    );
+  } catch(e) {
+    alert('操作失败，请检查网络');
+  }
+}
+
+async function quickAdd(userId, delta, email) {
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  try {
+    const res = await fetch('/api/admin/users/' + userId + '/add-points', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ points: delta })
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '操作失败'); return; }
+    // 只刷新用户数据+重新渲染当前页，不重置页码
+    await fetchUsers();
+    renderUsersPage();
+    showToast(
+      delta > 0
+        ? '已为 ' + email + ' 增加 ' + delta + ' 积分'
+        : '已为 ' + email + ' 减少 ' + Math.abs(delta) + ' 积分',
+      'success'
+    );
+  } catch(e) {
+    alert('操作失败，请检查网络');
+  }
+}
+
+/* ===================== TOAST ===================== */
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + (type||'') + ' visible';
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.classList.remove('visible'); }, 2500);
+}
+
+/* ===================== LOGIN ===================== */
+async function handleLogin() {
+  const email = document.getElementById('adminEmail').value.trim().toLowerCase();
+  const password = document.getElementById('adminPassword').value;
+  const errEl = document.getElementById('loginError');
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password})
+    });
+    const data = await res.json();
+    if (data.token && data.user) {
+      errEl.classList.remove('visible');
+      localStorage.setItem('pencilbear_admin_token', data.token);
+      setAdminSession(email);
+      showDashboard();
+      showToast('登录成功，欢迎 ' + (data.user.username || email), 'success');
+      refreshAll();
+    } else {
+      errEl.textContent = data.error || '邮箱或密码错误';
+      errEl.classList.add('visible');
+    }
+  } catch(e) {
+    // Fallback to local check
+    const admin = getAdmin();
+    if (email === admin.email && password === admin.password) {
+      errEl.classList.remove('visible');
+      setAdminSession(email);
+      showDashboard();
+      showToast('登录成功', 'success');
+    } else {
+      errEl.classList.add('visible');
+    }
+  }
+}
+document.getElementById('adminPassword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleLogin();
+});
+
+function handleLogout() {
+  clearAdminSession();
+  document.getElementById('dashboard').classList.remove('open');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('adminEmail').value = '';
+  document.getElementById('adminPassword').value = '';
+}
+
+function showDashboard() {
+  const token = localStorage.getItem('pencilbear_admin_token');
+  if (!token) {
+    alert('登录已过期，请重新登录');
+    logout();
+    return;
+  }
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('dashboard').classList.add('open');
+  document.getElementById('adminUserDisplay').textContent = getAdmin().email;
+  refreshAll();
+}
+
+/* ===================== DATE UTIL ===================== */
+function fmtDate(dateStr) {
+  if (!dateStr) return '-';
+  // Accept epoch ms (numbers) or date strings
+  const d = (typeof dateStr === 'number' || /^\d{10,}$/.test(String(dateStr)))
+    ? new Date(Number(dateStr))
+    : new Date((dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T')) + 'Z');
+  return isNaN(d.getTime()) ? dateStr : d.toLocaleString('zh-CN');
+}
+function fmtDateShort(dateStr) {
+  if (!dateStr) return '-';
+  const d = (typeof dateStr === 'number' || /^\d{10,}$/.test(String(dateStr)))
+    ? new Date(Number(dateStr))
+    : new Date((dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T')) + 'Z');
+  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('zh-CN');
+}
+
+/* ===================== REFRESH ===================== */
+async function refreshAll() {
+  await fetchOrders();
+  refreshStats();
+  loadTrackStats();
+  refreshUsers();
+  refreshOrders();
+  loadCases();
+  initCaseUpload();
+  loadPayments();
+}
+
+async function refreshStats() {
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  const orders = getOrders();
+  let userCount = 0;
+  let genCount = 0;
+  try {
+    const res = await fetch('/api/admin/stats', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (data.stats) {
+      userCount = data.stats.users || 0;
+      genCount = data.stats.generations || 0;
+    }
+  } catch(e) {}
+  const pendingCount = orders.filter(o => o.status === 'pending').length;
+  const completedCount = orders.length - pendingCount;
+  document.getElementById('statOrders').textContent = orders.length;
+  document.getElementById('statUsers').textContent = userCount;
+  document.getElementById('statPending').textContent = pendingCount;
+  document.getElementById('statCompleted').textContent = completedCount;
+}
+
+/* ===================== 营收统计 ===================== */
+async function loadPayments() {
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  try {
+    const res = await fetch('/api/admin/payments', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (data.error) return;
+    const s = data.summary || {};
+    const paidRev = parseFloat(s.paid_revenue || 0);
+    const settledRev = parseFloat(s.settled_revenue || 0);
+    document.getElementById('revTotal').textContent = '$' + paidRev.toFixed(2);
+    document.getElementById('revSettledSub').textContent = '已到账 $' + settledRev.toFixed(2);
+    document.getElementById('revPaidOrders').textContent = s.paid_orders || 0;
+    document.getElementById('revConsumed').textContent = s.consumed_orders || 0;
+    const emails = new Set((data.recent || [])
+      .filter(p => p.status === 'CONSUMED' || p.status === 'PAID')
+      .map(p => (p.user_email||'').toLowerCase()).filter(Boolean));
+    document.getElementById('revUsers').textContent = emails.size;
+
+    const planRow = document.getElementById('revPlanRow');
+    planRow.innerHTML = '';
+    const names = { basic:'Basic $29.8', pro:'Pro $69.8', max:'Max $198' };
+    (data.byPlan || []).forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'stat-card';
+      card.style.borderLeft = '3px solid #6366f1';
+      card.innerHTML = '<div class="stat-label">' + (names[p.plan_key]||p.plan_key) + '</div>' +
+        '<div class="stat-value">' + (p.paid||0) + ' 笔</div>' +
+        '<div class="stat-sub" style="font-size:11px;color:rgba(255,255,255,0.35)">$' + parseFloat(p.revenue||0).toFixed(2) + '</div>';
+      planRow.appendChild(card);
+    });
+
+    const tbody = document.getElementById('paymentsTable');
+    const empty = document.getElementById('paymentsEmpty');
+    tbody.innerHTML = '';
+    const list = (data.recent || []).filter(p => p.status === 'CONSUMED' || p.status === 'PAID');
+    if (list.length === 0) {
+      empty.style.display = 'flex';
+      return;
+    }
+    empty.style.display = 'none';
+    list.forEach(p => {
+      const tr = document.createElement('tr');
+      const isConsumed = p.status === 'CONSUMED';
+      const statusTxt = isConsumed ? '已到账' : '已支付';
+      const statusColor = isConsumed ? '#10b981' : '#f59e0b';
+      const payTime = p.paid_at ? fmtDate(p.paid_at) : (isConsumed ? fmtDate(p.consumed_at) : '-');
+      tr.innerHTML = '<td>' + p.out_trade_no + '</td>' +
+        '<td>' + (p.user_email || '-') + '</td>' +
+        '<td>' + (names[p.plan_key]||p.plan_key) + '</td>' +
+        '<td>$' + parseFloat(p.amount||0).toFixed(2) + '</td>' +
+        '<td><span style="color:' + statusColor + ';font-weight:600">' + statusTxt + '</span></td>' +
+        '<td>' + payTime + '</td>';
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    console.error('[loadPayments]', e);
+  }
+}
+
+/* ===================== 付费/赠送 切换 ===================== */
+function switchOrderTab(tab) {
+  const paidBtn = document.getElementById('tabPaid');
+  const giftBtn = document.getElementById('tabGift');
+  const paidView = document.getElementById('paidView');
+  const giftView = document.getElementById('giftView');
+  const activeStyle = 'padding:6px 16px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid #6366f1;background:#6366f1;color:#fff;font-weight:600';
+  const idleStyle = 'padding:6px 16px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.6);font-weight:600';
+  if (tab === 'gift') {
+    giftBtn.style.cssText = activeStyle;
+    paidBtn.style.cssText = idleStyle;
+    giftView.style.display = 'block';
+    paidView.style.display = 'none';
+    loadGifts();
+  } else {
+    paidBtn.style.cssText = activeStyle;
+    giftBtn.style.cssText = idleStyle;
+    paidView.style.display = 'block';
+    giftView.style.display = 'none';
+  }
+}
+
+/* ===================== 赠送积分列表 ===================== */
+async function loadGifts() {
+  const token = localStorage.getItem('pencilbear_admin_token') || '';
+  try {
+    const res = await fetch('/api/admin/gifts', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (data.error) return;
+
+    const typeNames = { register:'ð 注册赠送', recall:'ð© 召回补送', admin:'ð  后台赠送', backfill:'ð 历史赠送' };
+    const typeColors = { register:'#10b981', recall:'#6366f1', admin:'#f59e0b', backfill:'#8b5cf6' };
+
+    // 类型汇总卡片
+    const typeRow = document.getElementById('giftTypeRow');
+    typeRow.innerHTML = '';
+    const s = data.summary || {};
+    const totalCard = document.createElement('div');
+    totalCard.className = 'stat-card';
+    totalCard.style.borderLeft = '3px solid #10b981';
+    totalCard.innerHTML = '<div class="stat-label">累计赠送</div>' +
+      '<div class="stat-value">' + (s.total_credits || 0) + ' 积分</div>' +
+      '<div class="stat-sub" style="font-size:11px;color:rgba(255,255,255,0.35)">' + (s.total_gifts || 0) + ' 笔 / ' + (s.gift_users || 0) + ' 人</div>';
+    typeRow.appendChild(totalCard);
+    (data.byType || []).forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'stat-card';
+      card.style.borderLeft = '3px solid ' + (typeColors[t.gift_type] || '#6366f1');
+      card.innerHTML = '<div class="stat-label">' + (typeNames[t.gift_type] || t.gift_type) + '</div>' +
+        '<div class="stat-value">' + (t.total || 0) + ' 笔</div>' +
+        '<div class="stat-sub" style="font-size:11px;color:rgba(255,255,255,0.35)">' + (t.credits || 0) + ' 积分</div>';
+      typeRow.appendChild(card);
+    });
+
+    const tbody = document.getElementById('giftsTable');
+    const empty = document.getElementById('giftsEmpty');
+    tbody.innerHTML = '';
+    const list = data.recent || [];
+    if (list.length === 0) {
+      empty.style.display = 'flex';
+      return;
+    }
+    empty.style.display = 'none';
+    list.forEach(g => {
+      const tr = document.createElement('tr');
+      const color = typeColors[g.gift_type] || '#6366f1';
+      const label = typeNames[g.gift_type] || g.gift_type;
+      tr.innerHTML = '<td>' + (g.user_email || '-') + '</td>' +
+        '<td>+' + (g.credits || 0) + '</td>' +
+        '<td><span style="color:' + color + ';font-weight:600">' + label + '</span></td>' +
+        '<td style="color:rgba(255,255,255,0.5)">' + (g.note || '-') + '</td>' +
+        '<td>' + fmtDate(g.created_at) + '</td>';
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    console.error('[loadGifts]', e);
+  }
+}
+
+/* 浏览量统计 - 调用后端API */
+function loadTrackStats() {
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  fetch('/api/track/stats', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return;
+    document.getElementById('todayPV').textContent = data.todayPV || 0;
+    document.getElementById('todayUV').textContent = data.todayUV || 0;
+    document.getElementById('totalPV').textContent = data.totalPV || 0;
+    document.getElementById('totalUV').textContent = data.totalUV || 0;
+    document.getElementById('yesterdayPVSub').textContent = '昨日: ' + (data.yesterdayPV || 0);
+    document.getElementById('yesterdayUVSub').textContent = '昨日: ' + (data.yesterdayUV || 0);
+    
+    // 渲染7日趋势图
+    if (data.dailyTrend && data.dailyTrend.length > 0) {
+      const maxVal = Math.max(...data.dailyTrend.map(d => d.pv), 1);
+      const chartEl = document.getElementById('trendChart');
+      chartEl.innerHTML = data.dailyTrend.map(d => {
+        const h = Math.max((d.pv / maxVal) * 80, 3);
+        return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;min-width:32px">'
+          + '<div style="width:100%;background:linear-gradient(to top,#6366f1,#a78bfa);border-radius:4px 4px 0 0;height:' + h + 'px;min-height:3px;transition:height 0.3s"></div>'
+          + '<div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px;white-space:nowrap">' + d.date.slice(5) + '</div>'
+          + '<div style="font-size:10px;font-weight:600;color:#a78bfa">' + d.pv + '</div>'
+          + '</div>';
+      }).join('');
+    }
+  })
+  .catch(() => {});
+}
+
+/* 页面访问埋点 */
+(function() {
+  try {
+    const vid = 'v_' + (localStorage.getItem('_pb_vid') || Math.random().toString(36).slice(2, 10));
+    localStorage.setItem('_pb_vid', vid);
+    const token = localStorage.getItem('pencilbear_admin_token') || '';
+    navigator.connection && null;
+    fetch('/api/track/pageview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ path: location.pathname, visitorId: vid, referrer: document.referrer })
+    }).catch(()=>{});
+  } catch(e) {}
+})();
+
+let _userCurrentPage = 1;
+const _userPageSize = 15;
+let _userSearchTerm = '';
+let _userSearchTimer = null;
+
+// 转义 HTML 属性中的特殊字符（防止单引号等破坏 onclick）
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/'/g,"\x27").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function onUserSearch() {
+  clearTimeout(_userSearchTimer);
+  _userSearchTimer = setTimeout(() => {
+    const input = document.getElementById('userSearchInput');
+    _userSearchTerm = (input.value || '').trim().toLowerCase();
+    _userCurrentPage = 1;
+    renderUsersPage();
+  }, 250);
+}
+
+function renderUsersPage() {
+  const users = _cachedUsers || [];
+  const orders = getOrders();
+  const tbody = document.getElementById('usersTable');
+  const empty = document.getElementById('usersEmpty');
+  const pagination = document.getElementById('userPagination');
+
+  let filtered = users;
+  if (_userSearchTerm) {
+    filtered = users.filter(u =>
+      (u.email && u.email.toLowerCase().includes(_userSearchTerm)) ||
+      (u.username && u.username.toLowerCase().includes(_userSearchTerm))
+    );
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    empty.querySelector('svg').nextSibling.textContent = _userSearchTerm ? '未找到匹配用户' : '暂无注册用户';
+    pagination.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const totalPages = Math.ceil(filtered.length / _userPageSize);
+  if (_userCurrentPage > totalPages) _userCurrentPage = totalPages;
+  if (_userCurrentPage < 1) _userCurrentPage = 1;
+
+  const start = (_userCurrentPage - 1) * _userPageSize;
+  const pageUsers = filtered.slice(start, start + _userPageSize);
+
+  tbody.innerHTML = pageUsers.map(u => {
+    const userOrders = orders.filter(o => (o.user_email || o.userEmail) === u.email);
+    const orderCount = userOrders.length;
+    const brands = userOrders.map(o => (o.brand_name || o.brandName)).filter(Boolean);
+    const brandsHtml = brands.length > 0
+      ? brands.map(b => `<span style="display:inline-block;background:rgba(167,139,250,0.12);color:#c4b5fd;font-size:11px;font-weight:500;padding:2px 8px;border-radius:6px;margin:2px 3px;border:1px solid rgba(167,139,250,0.2)">${b}</span>`).join('')
+      : '<span style="color:rgba(255,255,255,0.2);font-size:12px">-</span>';
+    const credits = u.points || 0;
+    const creditsColor = credits > 0 ? '#a78bfa' : 'rgba(255,255,255,0.3)';
+    const regDate = u.created_at ? fmtDate(u.created_at) : '-';
+    return `<tr>
+      <td>
+        <div style="font-weight:500;color:#fff">${u.email}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px">${escAttr(u.username || '')}</div>
+      </td>
+      <td>${regDate}</td>
+      <td>
+        <span style="font-weight:700;color:${creditsColor};font-size:15px">${credits}</span>
+        <div style="display:flex;gap:4px;margin-top:4px">
+          <button class="credit-btn minus" onclick="event.stopPropagation();quickAdd('${escAttr(u.id)}',-1,'${escAttr(u.email)}')" title="减少1次">-1</button>
+          <button class="credit-btn plus" onclick="event.stopPropagation();quickAdd('${escAttr(u.id)}',1,'${escAttr(u.email)}')" title="增加1次">+1</button>
+          <button class="credit-btn adjust-btn" onclick="event.stopPropagation();openAdjustModal('${escAttr(u.id)}','${escAttr(u.email)}','${credits}')" title="自定义调整">调整</button>
+        </div>
+      </td>
+      <td>${orderCount}</td>
+      <td style="max-width:200px">${brandsHtml}</td>
+      <td>
+        <button class="action-btn view" onclick="openUserDetail('${escAttr(u.id)}')">用户详情</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  if (totalPages > 1) {
+    pagination.style.display = '';
+    const info = document.getElementById('userPageInfo');
+    info.textContent = '共 ' + filtered.length + ' 个用户，第 ' + _userCurrentPage + '/' + totalPages + ' 页';
+    const controls = document.getElementById('userPageControls');
+    let html = '<button class="page-btn" onclick="goUserPage(' + (_userCurrentPage - 1) + ')"' + (_userCurrentPage <= 1 ? ' disabled' : '') + '>上一页</button>';
+    let startPage = Math.max(1, _userCurrentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+    if (startPage > 1) {
+      html += '<button class="page-btn" onclick="goUserPage(1)">1</button>';
+      if (startPage > 2) html += '<span style="color:rgba(255,255,255,0.3);font-size:12px">...</span>';
+    }
+    for (let p = startPage; p <= endPage; p++) {
+      html += '<button class="page-btn' + (p === _userCurrentPage ? ' active' : '') + '" onclick="goUserPage(' + p + ')">' + p + '</button>';
+    }
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) html += '<span style="color:rgba(255,255,255,0.3);font-size:12px">...</span>';
+      html += '<button class="page-btn" onclick="goUserPage(' + totalPages + ')">' + totalPages + '</button>';
+    }
+    html += '<button class="page-btn" onclick="goUserPage(' + (_userCurrentPage + 1) + ')"' + (_userCurrentPage >= totalPages ? ' disabled' : '') + '>下一页</button>';
+    controls.innerHTML = html;
+  } else {
+    pagination.style.display = 'none';
+  }
+}
+
+function goUserPage(page) {
+  _userCurrentPage = page;
+  renderUsersPage();
+}
+
+async function refreshUsers() {
+  await fetchUsers();
+  _userCurrentPage = 1;
+  _userSearchTerm = '';
+  const input = document.getElementById('userSearchInput');
+  if (input) input.value = '';
+  renderUsersPage();
+}
+
+let currentFilter = 'all';
+let currentSourceFilter = ''; // ''=全部, 'paid'=付费, 'gift'=赠送
+function filterOrders(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.section-tabs:first-of-type .section-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  refreshOrders();
+}
+function filterSource(source, btn) {
+  // 切换：再点同按钮取消选中
+  if (currentSourceFilter === source) {
+    currentSourceFilter = '';
+    btn.classList.remove('active');
+  } else {
+    currentSourceFilter = source;
+    document.getElementById('tabPaid').classList.remove('active');
+    document.getElementById('tabGift').classList.remove('active');
+    btn.classList.add('active');
+  }
+  refreshOrders();
+}
+
+function refreshOrders() {
+  const orders = getOrders();
+  let filtered = currentFilter === 'all' ? orders : orders.filter(o => o.status === currentFilter);
+  if (currentSourceFilter) {
+    filtered = filtered.filter(o => (o.credit_source || 'gift') === currentSourceFilter);
+  }
+  const tbody = document.getElementById('ordersTable');
+  const empty = document.getElementById('ordersEmpty');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(o => {
+    const orderId = o.id || '';
+    const userEmail = o.user_email || o.userEmail || '';
+    const brandName = o.brand_name || o.brandName || '';
+    const colorMode = o.color_mode || o.colorMode || '';
+    const status = o.status || 'pending';
+    const imageCount = o.image_count !== undefined ? o.image_count : (o.designs ? o.designs.length : 0);
+    const createdAt = o.created_at || o.createdAt || '';
+    const creditSrc = o.credit_source || 'gift';
+    let displayDate = '-';
+    if (createdAt) {
+      const iso = createdAt.includes('T') ? createdAt : createdAt.replace(' ', 'T');
+      const d = new Date(iso + 'Z'); // UTC → local
+      displayDate = isNaN(d.getTime()) ? createdAt : d.toLocaleString('zh-CN');
+    }
+    const statusClass = status === 'pending' ? 'pending' : 'completed';
+    const statusText = status === 'pending' ? '待处理' : '已交付';
+    const sourceTag = creditSrc === 'paid'
+      ? '<span style="padding:2px 10px;border-radius:6px;background:rgba(245,158,11,0.15);color:#fbbf24;font-size:12px;font-weight:600">ð° 付费</span>'
+      : '<span style="padding:2px 10px;border-radius:6px;background:rgba(167,139,250,0.15);color:#c4b5fd;font-size:12px;font-weight:600">ð 赠送</span>';
+    return '<tr>' +
+      '<td style="font-family:monospace;font-size:12px;color:rgba(255,255,255,0.3)">' + orderId.slice(-12) + '</td>' +
+      '<td style="font-weight:500;color:#fff">' + userEmail + '</td>' +
+      '<td style="font-weight:600;color:#a78bfa;font-size:14px">' + brandName + '</td>' +
+      '<td style="font-size:12px;color:#94a3b8">' + (o.industry || '-') + '</td>' +
+      '<td><span style="padding:2px 8px;border-radius:6px;background:' + (colorMode === '彩色' ? 'rgba(167,139,250,0.15)' : 'rgba(148,163,184,0.15)') + ';color:' + (colorMode === '彩色' ? '#c4b5fd' : '#94a3b8') + ';font-size:12px">' + (colorMode || '-') + '</span></td>' +
+      '<td>' + sourceTag + '</td>' +
+      '<td style="font-size:12px;color:#94a3b8">' + displayDate + '</td>' +
+      '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
+      '<td>' + imageCount + ' 张</td>' +
+      '<td>' +
+        '<button class="action-btn view" onclick="openOrderDetail(\'' + orderId + '\')">详情</button>' +
+        '<button class="action-btn upload" onclick="openOrderDetail(\'' + orderId + '\')">上传</button>' +
+        '<button class="action-btn delete" onclick="deleteOrder(\'' + orderId + '\')" style="margin-top:4px">删除</button>' +
+      '</td></tr>';
+  }).join('');
+}
+
+/* ===================== ORDER DETAIL PANEL ===================== */
+let currentOrderId = null;
+let currentOrderImages = [];
+
+async function openOrderDetail(orderId) {
+  currentOrderId = orderId;
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  document.getElementById('panelTitle').textContent = '加载中...';
+  document.getElementById('panelOverlay').classList.add('open');
+  document.getElementById('orderPanel').classList.add('open');
+  const body = document.getElementById('panelBody');
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3)">加载中...</div>';
+
+  try {
+    const resp = await fetch('/api/admin/orders/' + orderId, { headers: { 'Authorization': 'Bearer ' + token }});
+    const data = await resp.json();
+    if (!data.order) { body.innerHTML = '<div class="empty-state">订单不存在</div>'; return; }
+    const order = data.order;
+    currentOrderImages = data.images || [];
+
+    const oid = order.id || '';
+    const userEmail = order.user_email || order.userEmail || '';
+    const brandName = order.brand_name || order.brandName || '';
+    const colorMode = order.color_mode || order.colorMode || '';
+    const username = order.username || '';
+    const status = order.status || 'pending';
+    const createdAt = order.created_at || order.createdAt || '';
+    const statusText = status === 'pending' ? '待处理' : '已交付';
+    const statusClass = status === 'pending' ? 'pending' : 'completed';
+
+    let imagesHtml = '';
+    if (currentOrderImages.length > 0) {
+      imagesHtml = currentOrderImages.map((img, idx) => {
+        const url = '/uploads/orders/' + img.filename;
+        const name = img.original_name || img.filename;
+        return '<div class="design-card">' +
+          '<div class="design-thumb" onclick="openImgLb(\'' + url + '\')">' +
+          '<img src="' + url + '" alt="' + name + '" loading="lazy">' +
+          '</div>' +
+          '<div class="design-info">' +
+          '<div class="design-name">' + name + '</div>' +
+          '<div class="design-meta">' + (img.file_size ? (img.file_size / 1024).toFixed(1) + ' KB' : '') + ' · ' + fmtDate(img.created_at) + '</div>' +
+          '<div class="design-actions">' +
+          '<button class="action-btn delete" onclick="deleteOrderImage(\'' + orderId + '\',\'' + img.id + '\')">删除</button>' +
+          '</div></div></div>';
+      }).join('');
+    } else {
+      imagesHtml = '<div class="empty-state" style="margin:16px 0">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>暂无设计稿</div>';
+    }
+
+    document.getElementById('panelTitle').textContent = '订单详情';
+    body.innerHTML = '' +
+      '<div class="info-row"><span class="info-label">订单 ID</span><span class="info-value" style="font-family:monospace;font-size:12px">' + oid + '</span></div>' +
+      '<div class="info-row"><span class="info-label">用户</span><span class="info-value">' + userEmail + (username ? ' (' + username + ')' : '') + '</span></div>' +
+      '<div class="info-row"><span class="info-label">品牌名称</span><span class="info-value" style="font-size:16px;font-weight:700;color:#fff">' + brandName + '</span></div>' +
+      '<div class="info-row"><span class="info-label">色彩模式</span><span class="info-value"><span style="padding:3px 12px;border-radius:8px;background:' + (colorMode === '彩色' ? 'rgba(167,139,250,0.15)' : 'rgba(148,163,184,0.15)') + ';color:' + (colorMode === '彩色' ? '#c4b5fd' : '#94a3b8') + ';font-size:13px">' + (colorMode || '未选择') + '</span></span></div>' +
+      '<div class="info-row"><span class="info-label">提交时间</span><span class="info-value">' + fmtDate(createdAt) + '</span></div>' +
+      '<div class="info-row"><span class="info-label">状态</span><span class="info-value"><span class="status-badge ' + statusClass + '">' + statusText + '</span></span></div>' +
+      '<div style="margin-top:24px"><h4 style="font-size:14px;font-weight:600;color:#fff;margin-bottom:8px">已上传设计稿 (' + currentOrderImages.length + ')</h4><div class="design-list">' + imagesHtml + '</div></div>' +
+      '<div style="margin-top:24px"><h4 style="font-size:14px;font-weight:600;color:#fff;margin-bottom:8px">上传新设计稿</h4>' +
+      '<div class="upload-zone" onclick="document.getElementById(\'fileInput\').click()" id="uploadZone" tabindex="0">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+      '<p>点击上传 / 粘贴图片（Ctrl+V）<br><span style="font-size:11px;opacity:0.5">支持 PNG / JPG / WebP / GIF，单文件最大 10MB</span></p>' +
+      '<input type="file" id="fileInput" accept="image/*" multiple onchange="handleFileSelect(event)" style="display:none"></div>' +
+      '<div id="uploadPreview"></div></div>' +
+      '<div style="margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07)">' +
+      '<button class="action-btn delete" onclick="deleteOrder(\'' + orderId + '\')" style="padding:6px 14px;font-size:12px">删除此订单</button></div>';
+  } catch(e) {
+    body.innerHTML = '<div class="empty-state">加载失败: ' + e.message + '</div>';
+  }
+}
+
+function closePanel() {
+  document.getElementById('orderPanel').classList.remove('open');
+  document.getElementById('panelOverlay').classList.remove('open');
+  currentOrderId = null;
+  currentOrderImages = [];
+}
+
+// Multiple file upload support
+function handleFileSelect(e) {
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token || !currentOrderId) { showToast('请先登录', 'error'); return; }
+
+  // Show preview
+  const preview = document.getElementById('uploadPreview');
+  preview.innerHTML = '<div class="upload-preview">' +
+    files.map(f => '<div style="display:flex;align-items:center;gap:8px"><div style="font-size:12px;color:#94a3b8">' + f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)</div></div>').join('') +
+    '</div>' +
+    '<button class="upload-confirm-btn" onclick="confirmUpload()">确认上传 ' + files.length + ' 张图片</button>' +
+    '<button class="upload-cancel-btn" onclick="cancelUpload()">取消</button>';
+
+  // Store files for upload
+  window._pendingUploadFiles = files;
+}
+
+// ====== 粘贴上传（Ctrl+V 从剪贴板粘贴图片）======
+function handlePasteUpload(e) {
+  // 只在订单详情面板打开时响应
+  if (!currentOrderId) return;
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  const imageFiles = [];
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      const file = items[i].getAsFile();
+      if (file) imageFiles.push(file);
+    }
+  }
+  if (imageFiles.length === 0) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  // 走同一套预览+确认流程：构造一个 mock event 对象
+  const mockEvent = { target: { files: imageFiles } };
+  handleFileSelect(mockEvent);
+  // 高亮提示一下
+  showToast('已粘贴 ' + imageFiles.length + ' 张图片，请点击确认上传', 'success');
+}
+
+// 全局注册粘贴事件（面板打开时才生效）
+document.addEventListener('paste', handlePasteUpload);
+
+function cancelUpload() {
+  window._pendingUploadFiles = null;
+  document.getElementById('uploadPreview').innerHTML = '';
+  document.getElementById('fileInput').value = '';
+}
+
+async function confirmUpload() {
+  const files = window._pendingUploadFiles;
+  if (!currentOrderId || !files || files.length === 0) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token) { showToast('登录已过期', 'error'); return; }
+
+  const formData = new FormData();
+  for (const f of files) { formData.append('images', f); }
+
+  try {
+    document.getElementById('uploadPreview').innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8">上传中...</div>';
+    const resp = await fetch('/api/admin/orders/' + currentOrderId + '/images', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: formData
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || '上传失败', 'error'); cancelUpload(); return; }
+    cancelUpload();
+    await fetchOrders();
+    await openOrderDetail(currentOrderId);
+    refreshAll();
+    showToast('成功上传 ' + data.count + ' 张图片', 'success');
+  } catch(e) {
+    showToast('上传失败: ' + e.message, 'error');
+    cancelUpload();
+  }
+}
+
+async function deleteOrderImage(orderId, imageId) {
+  if (!confirm('确定要删除这张图片吗？')) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token) { showToast('登录已过期', 'error'); return; }
+  try {
+    const resp = await fetch('/api/admin/orders/' + orderId + '/images/' + imageId, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || '删除失败', 'error'); return; }
+    await fetchOrders();
+    await openOrderDetail(orderId);
+    refreshAll();
+    showToast('图片已删除', 'error');
+  } catch(e) {
+    showToast('删除失败', 'error');
+  }
+}
+
+async function deleteOrder(orderId) {
+  if (!confirm('确定要删除这个订单吗？此操作不可恢复。')) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token) { showToast('登录已过期', 'error'); return; }
+  try {
+    const resp = await fetch('/api/admin/orders/' + orderId, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || '删除失败', 'error'); return; }
+    closePanel();
+    await fetchOrders();
+    refreshAll();
+    showToast('订单已删除', 'error');
+  } catch(e) {
+    showToast('删除失败', 'error');
+  }
+}
+
+async function deleteUser(userId, email) {
+  if (!confirm(`确定要删除用户 ${email} 吗？\n该用户的订单、设计稿和账号将一并删除，不可恢复！`)) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token) { showToast('登录已过期，请重新登录', 'error'); return; }
+  try {
+    const resp = await fetch(`/api/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || '删除失败', 'error'); return; }
+    // 同时删除该用户的本地订单
+    const orders = getOrders().filter(o => (o.user_email || o.userEmail) !== email);
+    saveOrders(orders);
+    refreshAll();
+    showToast('用户已删除', 'error');
+  } catch(err) {
+    showToast('网络错误', 'error');
+  }
+}
+
+function viewUserOrders(email) {
+  const orders = getOrders().filter(o => (o.user_email || o.userEmail) === email);
+  currentFilter = 'all';
+  document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section-tab')[0].classList.add('active');
+
+  const tbody = document.getElementById('ordersTable');
+  const empty = document.getElementById('ordersEmpty');
+  if (orders.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = orders.map(o => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px;color:rgba(255,255,255,0.3)">${o.id.slice(-12)}</td>
+      <td style="font-weight:500;color:#fff">${(o.user_email || o.userEmail)}</td>
+      <td style="font-weight:600;color:#a78bfa;font-size:14px">${(o.brand_name || o.brandName)}</td>
+      <td style="font-size:12px;color:#94a3b8">${o.industry || '-'}</td>
+      <td><span style="padding:2px 8px;border-radius:6px;background:${((o.color_mode || o.colorMode)||'')==='彩色'?'rgba(167,139,250,0.15)':'rgba(148,163,184,0.15)'};color:${((o.color_mode || o.colorMode)||'')==='彩色'?'#c4b5fd':'#94a3b8'};font-size:12px">${(o.color_mode || o.colorMode)||'-'}</span></td>
+      <td>${fmtDate(o.created_at || o.createdAt)}</td>
+      <td><span class="status-badge ${o.status}">${o.status === 'pending' ? '待处理' : '已交付'}</span></td>
+      <td>${o.image_count || 0} 张</td>
+      <td>
+        <button class="action-btn view" onclick="openOrderDetail('${o.id}')">详情</button>
+        <button class="action-btn upload" onclick="openOrderDetail('${o.id}')">上传</button>
+        <button class="action-btn delete" onclick="deleteOrder('${o.id}')" style="margin-top:4px">删除</button>
+      </td>
+    </tr>
+  `).join('');
+  document.querySelector('.section').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ===================== USER DETAIL PANEL ===================== */
+let _userDetailUserId = null;
+
+function openUserDetail(userId) {
+  const users = getUsers();
+  const u = users.find(x => x.id == userId || x.id === userId);
+  if (!u) { showToast('用户不存在', 'error'); return; }
+  _userDetailUserId = userId;
+
+  const orders = getOrders().filter(o => (o.user_email || o.userEmail) === u.email);
+  const credits = u.points || 0;
+  const regDate = u.created_at ? fmtDate(u.created_at) : '-';
+  const isAdmin = (u.role === 'admin');
+  const currentAdmin = getAdminSession();
+  const isSelf = currentAdmin && currentAdmin.email === u.email;
+
+  document.getElementById('panelTitle').textContent = '用户详情';
+  document.getElementById('orderPanel').classList.add('open');
+  document.getElementById('panelOverlay').classList.add('open');
+
+  let ordersHtml = '';
+  if (orders.length > 0) {
+    ordersHtml = orders.map((o, idx) => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;border:1px solid rgba(255,255,255,0.05)">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;color:#a78bfa;font-size:14px">${(o.brand_name || o.brandName)}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px">${fmtDate(o.created_at || o.createdAt)} · <span class="status-badge ${o.status}" style="display:inline">${o.status === 'pending' ? '待处理' : '已交付'}</span> · ${o.image_count || 0} 张设计稿</div>
+        </div>
+        <button class="action-btn view" onclick="openOrderDetail('${o.id}')" style="padding:4px 10px;font-size:11px">查看</button>
+        <button class="action-btn delete" onclick="deleteOrderFromUserDetail('${o.id}')" style="padding:4px 10px;font-size:11px">删除</button>
+      </div>
+    `).join('');
+  } else {
+    ordersHtml = `<div class="empty-state" style="margin:16px 0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      暂无订单
+    </div>`;
+  }
+
+  let deleteSection = '';
+  if (isAdmin) {
+    deleteSection = `<div style="margin-top:24px;padding:14px 16px;background:rgba(248,113,113,0.06);border-radius:12px;border:1px solid rgba(248,113,113,0.12);text-align:center">
+      <div style="font-size:12px;color:rgba(248,113,113,0.6);margin-bottom:8px">管理员账号不可删除</div>
+    </div>`;
+  } else if (isSelf) {
+    deleteSection = `<div style="margin-top:24px;padding:14px 16px;background:rgba(248,113,113,0.06);border-radius:12px;border:1px solid rgba(248,113,113,0.12);text-align:center">
+      <div style="font-size:12px;color:rgba(248,113,113,0.6);margin-bottom:8px">不可删除当前登录的管理员账号</div>
+    </div>`;
+  } else {
+    deleteSection = `<div style="margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07)">
+      <button class="action-btn delete" onclick="deleteUserFromDetail()" style="padding:8px 20px;font-size:13px;width:100%">删除此用户</button>
+      <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:8px;text-align:center">删除后该用户的订单、设计稿和账号将一并删除，不可恢复</div>
+    </div>`;
+  }
+
+  document.getElementById('panelBody').innerHTML = `
+    <div class="info-row">
+      <span class="info-label">邮箱</span>
+      <span class="info-value" style="font-weight:600;color:#fff">${u.email}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">用户名</span>
+      <span class="info-value">${u.username || '-'}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">角色</span>
+      <span class="info-value"><span style="padding:3px 12px;border-radius:8px;background:${isAdmin?'rgba(167,139,250,0.15)':'rgba(148,163,184,0.15)'};color:${isAdmin?'#c4b5fd':'#94a3b8'};font-size:13px">${isAdmin?'管理员':'普通用户'}</span></span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">剩余积分</span>
+      <span class="info-value" style="font-weight:700;color:#a78bfa;font-size:18px">${credits}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">注册时间</span>
+      <span class="info-value">${regDate}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">订单数</span>
+      <span class="info-value">${orders.length}</span>
+    </div>
+    <div style="margin-top:24px">
+      <h4 style="font-size:14px;font-weight:600;color:#fff;margin-bottom:10px">订单列表 (${orders.length})</h4>
+      <div>${ordersHtml}</div>
+    </div>
+    ${deleteSection}
+  `;
+}
+
+async function deleteUserFromDetail() {
+  const userId = _userDetailUserId;
+  if (!userId) return;
+  const users = getUsers();
+  const u = users.find(x => x.id == userId || x.id === userId);
+  if (!u) return;
+  if (!confirm('确定要删除用户 ' + u.email + ' 吗？\n该用户的订单、设计稿和账号将一并删除，不可恢复！')) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  if (!token) { showToast('登录已过期，请重新登录', 'error'); return; }
+  try {
+    const resp = await fetch('/api/admin/users/' + userId, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || '删除失败', 'error'); return; }
+    const orders = getOrders().filter(o => (o.user_email || o.userEmail) !== u.email);
+    saveOrders(orders);
+    closePanel();
+    refreshAll();
+    showToast('用户已删除', 'error');
+  } catch(err) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function deleteOrderFromUserDetail(orderId) {
+  if (!confirm('确定要删除这个订单吗？此操作不可恢复。')) return;
+  const token = localStorage.getItem('pencilbear_admin_token') || localStorage.getItem('pencilbear_admin_token') || '';
+  try {
+    const resp = await fetch('/api/admin/orders/' + orderId, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || '删除失败', 'error'); return; }
+    openUserDetail(_userDetailUserId);
+    refreshAll();
+    showToast('订单已删除', 'error');
+  } catch(err) {
+    showToast('网络错误', 'error');
+  }
+}
+
+/* ===================== IMAGE LIGHTBOX ===================== */
+function openImgLb(src) {
+  document.getElementById('imgLbImg').src = src;
+  document.getElementById('imgLb').classList.add('open');
+}
+function closeImgLb() {
+  document.getElementById('imgLb').classList.remove('open');
+  document.getElementById('imgLbImg').src = '';
+}
+
+/* ===================== KEYBOARD ===================== */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closePanel();
+    closeImgLb();
+  }
+});
+
+/* ===================== INIT ===================== */
+(function() {
+  const session = getAdminSession();
+  if (session) {
+    showDashboard();
+  }
+})();
+
+/* ===================== CASE MANAGEMENT ===================== */
+let _cases = [];
+let _draggedCaseId = null;
+let _caseOrderChanged = false;
+
+async function loadCases() {
+  const token = localStorage.getItem('pencilbear_admin_token');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/admin/cases', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    _cases = data.cases || [];
+    renderCases();
+  } catch(e) {
+    console.error('[Cases] Load error:', e);
+  }
+}
+
+function renderCases() {
+  const grid = document.getElementById('caseGrid');
+  const empty = document.getElementById('casesEmpty');
+  if (_cases.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.innerHTML = _cases.map((c, i) => `
+    <div class="case-card" draggable="true" data-id="${c.id}"
+         ondragstart="onCaseDragStart(event,'${c.id}')"
+         ondragover="onCaseDragOver(event,'${c.id}')"
+         ondragleave="onCaseDragLeave(event)"
+         ondrop="onCaseDrop(event,'${c.id}')"
+         ondragend="onCaseDragEnd(event)">
+      <div class="case-drag-handle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+      </div>
+      <img src="${c.image_url}" alt="${c.tag}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'160\'><rect width=\'200\' height=\'160\' fill=\'%23333\'/></svg>'">
+      <div class="case-card-info">
+        <div class="case-card-tag" contenteditable="true" data-id="${c.id}" onblur="updateCaseTag('${c.id}',this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}">${c.tag}</div>
+        <div class="case-card-actions">
+          <span class="case-card-order">#${i + 1}</span>
+          <button class="case-delete-btn" onclick="deleteCase('${c.id}')">删除</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function onCaseDragStart(e, id) {
+  _draggedCaseId = id;
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function onCaseDragOver(e, id) {
+  e.preventDefault();
+  if (id !== _draggedCaseId) {
+    e.currentTarget.classList.add('drag-over');
+  }
+}
+function onCaseDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function onCaseDrop(e, targetId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!_draggedCaseId || _draggedCaseId === targetId) return;
+  const fromIdx = _cases.findIndex(c => c.id === _draggedCaseId);
+  const toIdx = _cases.findIndex(c => c.id === targetId);
+  if (fromIdx < 0 || toIdx < 0) return;
+  const [moved] = _cases.splice(fromIdx, 1);
+  _cases.splice(toIdx, 0, moved);
+  _caseOrderChanged = true;
+  document.getElementById('saveOrderBtn').classList.add('show');
+  renderCases();
+}
+function onCaseDragEnd(e) {
+  e.target.classList.remove('dragging');
+  document.querySelectorAll('.case-card').forEach(c => c.classList.remove('drag-over'));
+}
+
+async function saveCaseOrder() {
+  const token = localStorage.getItem('pencilbear_admin_token');
+  if (!token) return;
+  const ids = _cases.map(c => c.id);
+  try {
+    const res = await fetch('/api/admin/cases/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ items: ids })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('排序已保存', 'success');
+      _caseOrderChanged = false;
+      document.getElementById('saveOrderBtn').classList.remove('show');
+    } else {
+      showToast('保存失败: ' + (data.error || '未知错误'), 'error');
+    }
+  } catch(e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function deleteCase(id) {
+  if (!confirm('确定要删除这个案例吗？图片文件也会被删除。')) return;
+  const token = localStorage.getItem('pencilbear_admin_token');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/admin/cases/' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (data.success) {
+      _cases = _cases.filter(c => c.id !== id);
+      renderCases();
+      showToast('案例已删除', 'success');
+    } else {
+      showToast('删除失败: ' + (data.error || '未知错误'), 'error');
+    }
+  } catch(e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function updateCaseTag(id, newTag) {
+  newTag = newTag.trim();
+  const c = _cases.find(c => c.id === id);
+  if (!c || c.tag === newTag) return;
+  const token = localStorage.getItem('pencilbear_admin_token');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/admin/cases/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ tag: newTag })
+    });
+    const data = await res.json();
+    if (data.success) {
+      c.tag = newTag;
+      showToast('标签已更新', 'success');
+    }
+  } catch(e) {
+    showToast('更新失败', 'error');
+  }
+}
+
+function initCaseUpload() {
+  const area = document.getElementById('caseUploadArea');
+  const input = document.getElementById('caseFileInput');
+  if (!area || !input) return;
+  area.addEventListener('dragover', (e) => { e.preventDefault(); area.classList.add('dragover'); });
+  area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+  area.addEventListener('drop', (e) => {
+    e.preventDefault();
+    area.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+      uploadCaseFiles(e.dataTransfer.files);
+    }
+  });
+  input.addEventListener('change', () => {
+    if (input.files.length > 0) {
+      uploadCaseFiles(input.files);
+      input.value = '';
+    }
+  });
+}
+
+async function uploadCaseFiles(files) {
+  const token = localStorage.getItem('pencilbear_admin_token');
+  if (!token) return;
+  const tagInput = document.getElementById('caseTagInput');
+  const tag = tagInput ? tagInput.value.trim() : '';
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append('image', file);
+    if (tag) formData.append('tag', tag);
+    try {
+      showToast('正在上传: ' + file.name + '...', 'info');
+      const res = await fetch('/api/admin/cases', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        _cases.push(data.case);
+        renderCases();
+        showToast('上传成功: ' + file.name, 'success');
+      } else {
+        showToast('上传失败: ' + (data.error || '未知错误'), 'error');
+      }
+    } catch(e) {
+      showToast('上传失败: ' + file.name, 'error');
+    }
+  }
+  if (tag) tagInput.value = '';
+}
+
+
+</script>
