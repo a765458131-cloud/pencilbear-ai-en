@@ -592,7 +592,7 @@
           <div class="section-tabs">
             <button class="section-tab active" onclick="filterDesignRequests('all',this)">全部</button>
             <button class="section-tab" onclick="filterDesignRequests('pending',this)">待处理</button>
-            <button class="section-tab" onclick="filterDesignRequests('resolved',this)">已处理</button>
+            <button class="section-tab" onclick="filterDesignRequests('delivered',this)">已交付</button>
           </div>
         </div>
       </div>
@@ -801,8 +801,8 @@ function renderDesignRequests() {
   const tbody = document.getElementById('designRequestsTable');
   if (!tbody) return;
   let list = _designRequests;
-  if (_drFilter === 'pending') list = list.filter(r => r.status !== 'resolved');
-  else if (_drFilter === 'resolved') list = list.filter(r => r.status === 'resolved');
+  if (_drFilter === 'pending') list = list.filter(r => r.status !== 'delivered');
+  else if (_drFilter === 'delivered') list = list.filter(r => r.status === 'delivered');
   if (list.length === 0) {
     tbody.innerHTML = '';
     const empty = document.getElementById('designRequestsEmpty');
@@ -819,9 +819,9 @@ function renderDesignRequests() {
     const industry = (r.industry || '-').replace(/</g, '&lt;');
     const colorMode = (r.color_mode || '').replace(/</g, '&lt;');
     const status = r.status || 'pending';
-    const resolved = status === 'resolved';
-    const statusClass = resolved ? 'completed' : 'pending';
-    const statusText = resolved ? '已处理' : '待处理';
+    const delivered = status === 'delivered';
+    const statusClass = delivered ? 'completed' : 'pending';
+    const statusText = delivered ? '已交付' : '待处理';
     const imageCount = r.image_count !== undefined ? r.image_count : 0;
     return '<tr>' +
       '<td style="font-family:monospace;font-size:12px;color:rgba(255,255,255,0.3)">#' + id + '</td>' +
@@ -863,9 +863,9 @@ async function openDesignDetail(drId) {
 
     _currentDRImages = imgData.images || [];
     const status = dr.status || 'pending';
-    const resolved = status === 'resolved';
-    const statusClass = resolved ? 'completed' : 'pending';
-    const statusText = resolved ? '已处理' : '待处理';
+    const delivered = status === 'delivered';
+    const statusClass = delivered ? 'completed' : 'pending';
+    const statusText = delivered ? '已交付' : '待处理';
 
     /* 渲染图片列表 */
     let imagesHtml = '';
@@ -899,7 +899,7 @@ async function openDesignDetail(drId) {
       '<div class="info-row"><span class="info-label">描述</span><span class="info-value">' + (dr.description || '-') + '</span></div>' +
       '<div class="info-row"><span class="info-label">提交时间</span><span class="info-value">' + fmtDRDate(dr.created_at) + '</span></div>' +
       '<div class="info-row"><span class="info-label">状态</span><span class="info-value"><span class="status-badge ' + statusClass + '">' + statusText + '</span> ' +
-        (!resolved ? '<button class="page-btn" onclick="resolveDesignRequest(' + drId + ');setTimeout(()=>openDesignDetail(' + drId + '),300)" style="margin-left:8px">标记已处理</button>' : '') +
+        (!delivered ? '<button class="page-btn" onclick="resolveDesignRequest(' + drId + ');setTimeout(()=>openDesignDetail(' + drId + '),300)" style="margin-left:8px">标记已交付</button>' : '') +
       '</span></div>' +
       '<div style="margin-top:24px"><h4 style="font-size:14px;font-weight:600;color:#fff;margin-bottom:8px">已上传设计稿 (' + _currentDRImages.length + ')</h4><div class="design-list">' + imagesHtml + '</div></div>' +
       '<div style="margin-top:24px"><h4 style="font-size:14px;font-weight:600;color:#fff;margin-bottom:8px">上传新设计稿</h4>' +
@@ -1017,13 +1017,13 @@ async function deleteDesignImage(drId, imageId) {
   }
 }
 
-/* ====== 标记已处理 ====== */
+/* ====== 标记已交付 ====== */
 async function resolveDesignRequest(id) {
   const token = localStorage.getItem('pencilbear_admin_token') || '';
   if (!token) return;
   try {
     const resp = await fetch('/api/admin/designs/' + id + '/resolve', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
-    if (resp.ok) { loadDesignRequests(); showToast('已标记为已处理', 'success'); }
+    if (resp.ok) { loadDesignRequests(); showToast('已标记为已交付', 'success'); }
   } catch (e) {}
 }
 
