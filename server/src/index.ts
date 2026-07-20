@@ -510,10 +510,33 @@ app.post('/api/designs', async (req, res) => {
   res.json({ ok: true, id: row ? row.id : null });
 });
 
+// Client-facing: fetch own design requests with delivered images
+app.get('/api/my-designs', (req: any, res) => {
+  const email = req.user?.email || req.query.email;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  const rows = all(
+    `SELECT dr.id, dr.brand_name, dr.industry, dr.color_mode, dr.status,
+            (SELECT GROUP_CONCAT(filename) FROM design_request_images WHERE request_id = dr.id) AS image_filenames
+     FROM design_requests AS dr WHERE dr.email = ? ORDER BY dr.created_at DESC LIMIT 50`,
+    [email]
+  );
+  // Attach full image URLs
+  const results = rows.map((r: any) => {
+    const images = (r.image_filenames || '').split(',').filter(Boolean).map((fn: string) => '/uploads/design_requests/' + fn);
+    const { image_filenames: _, ...rest } = r;
+    return { ...rest, images };
+  });
+  res.json({ requests: results });
+});
+
 app.get('/api/admin/designs', requireAdmin, (req: any, res) => {
   const limit = parseInt(req.query.limit || '200', 10);
   const rows = all(
-    'SELECT id, email, brand_name, industry, color_mode, description, status, resolved_at, created_at FROM design_requests ORDER BY created_at DESC LIMIT ?',
+    `SELECT dr.id, dr.email, dr.brand_name, dr.industry, dr.color_mode, dr.description,
+            dr.status, dr.resolved_at, dr.created_at,
+            (SELECT COUNT(*) FROM design_request_images WHERE request_id = dr.id) AS image_count
+     FROM design_requests AS dr
+     ORDER BY dr.created_at DESC LIMIT ?`,
     [limit]
   );
   res.json({ requests: rows });
@@ -576,6 +599,8 @@ app.post('/api/admin/designs/:id/images', requireAdmin, designUpload.array('imag
       id, f.filename, f.originalname || '', f.size || 0, now,
     ]);
   });
+  // Auto-mark as delivered when admin uploads design drafts
+  exec("UPDATE design_requests SET status = 'delivered' WHERE id = ? AND status != 'delivered'", [id]);
   await saveDb(config.dbPath);
   res.json({ ok: true, count: files.length });
 });
