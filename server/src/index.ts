@@ -527,6 +527,71 @@ app.post('/api/admin/designs/:id/resolve', requireAdmin, async (req: any, res) =
   res.json({ ok: true });
 });
 
+/* ---- Design request images (admin uploads final design drafts) ---- */
+const designUploadDir = path.join(__dirname, '..', '..', 'dist', 'uploads', 'design_requests');
+fs.mkdirSync(designUploadDir, { recursive: true });
+const designStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, designUploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.png';
+    cb(null, 'dr-' + Date.now() + '-' + Math.round(Math.random() * 1e6) + ext);
+  },
+});
+const designUpload = multer({ storage: designStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+
+// Delete a whole design request (and its uploaded images)
+app.delete('/api/admin/designs/:id', requireAdmin, async (req: any, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+  const imgs = all('SELECT filename FROM design_request_images WHERE request_id = ?', [id]);
+  imgs.forEach((im: any) => {
+    try { fs.unlinkSync(path.join(designUploadDir, path.basename(im.filename))); } catch { /* ignore */ }
+  });
+  exec('DELETE FROM design_request_images WHERE request_id = ?', [id]);
+  exec('DELETE FROM design_requests WHERE id = ?', [id]);
+  await saveDb(config.dbPath);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/designs/:id/images', requireAdmin, (req: any, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+  const images = all(
+    'SELECT id, request_id, filename, original_name, file_size, created_at FROM design_request_images WHERE request_id = ? ORDER BY id DESC',
+    [id]
+  );
+  res.json({ images });
+});
+
+app.post('/api/admin/designs/:id/images', requireAdmin, designUpload.array('images', 20), async (req: any, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+  const dr = get('SELECT id FROM design_requests WHERE id = ?', [id]);
+  if (!dr) return res.status(404).json({ error: 'Design request not found' });
+  const files = (req.files || []) as any[];
+  if (files.length === 0) return res.status(400).json({ error: 'No images uploaded' });
+  const now = Date.now();
+  files.forEach((f) => {
+    exec('INSERT INTO design_request_images (request_id, filename, original_name, file_size, created_at) VALUES (?, ?, ?, ?, ?)', [
+      id, f.filename, f.originalname || '', f.size || 0, now,
+    ]);
+  });
+  await saveDb(config.dbPath);
+  res.json({ ok: true, count: files.length });
+});
+
+app.delete('/api/admin/designs/:id/images/:imageId', requireAdmin, async (req: any, res) => {
+  const imageId = parseInt(req.params.imageId, 10);
+  if (isNaN(imageId)) return res.status(400).json({ error: 'Invalid id' });
+  const img = get('SELECT filename FROM design_request_images WHERE id = ?', [imageId]);
+  if (img) {
+    try { fs.unlinkSync(path.join(designUploadDir, path.basename(img.filename))); } catch { /* ignore */ }
+    exec('DELETE FROM design_request_images WHERE id = ?', [imageId]);
+    await saveDb(config.dbPath);
+  }
+  res.json({ ok: true });
+});
+
 /* ===================== Admin: Payments / Revenue ===================== */
 app.get('/api/admin/payments', requireAdmin, (req: any, res) => {
   const orders = all('SELECT * FROM orders WHERE status = \'completed\'');
