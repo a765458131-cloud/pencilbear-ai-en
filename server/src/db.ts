@@ -105,6 +105,15 @@ export async function initDb(dbPath: string): Promise<void> {
     created_at INTEGER NOT NULL
   );`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS design_request_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
+    original_name TEXT DEFAULT '',
+    file_size INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL
+  );`);
+
   // Seed admin account
   seedAdmin();
   // Seed default showcase cases if empty
