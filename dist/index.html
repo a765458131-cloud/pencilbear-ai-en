@@ -1179,6 +1179,22 @@
       catch { return []; }
     }
     function saveOrders(orders) { localStorage.setItem(ORDERS_KEY, JSON.stringify(orders)); }
+    function submitDesignRequest(req) {
+      try {
+        const s = getSession();
+        fetch(API_BASE + '/api/designs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('pencilbear_token') || '') },
+          body: JSON.stringify({
+            email: s ? s.email : '',
+            brandName: req.brandName,
+            industry: req.industry || 'unspecified',
+            colorMode: req.colorMode || 'unspecified',
+            createdAt: req.createdAt
+          })
+        }).catch(function(){});
+      } catch (e) {}
+    }
     function getMyOrders() {
       const session = getSession();
       if (!session) return [];
@@ -1941,6 +1957,7 @@
         session.points = data.points;
         setSession(session);
         updateNav();
+        submitDesignRequest(order);
 
         // Show delivery time notice for free-tier users
         showToast('Logo submitted successfully!', 'success');
